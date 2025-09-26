@@ -1,6 +1,6 @@
 <?php
 // GamePlan Scheduler - Professional Profile Management
-// Advanced user profile editing with favorite games management
+// Advanced user profile editing with favorite games management and password change
 
 require_once 'functions.php';
 session_start();
@@ -16,6 +16,7 @@ $user = getUserProfile($userId);
 $games = getGames();
 $favoriteGames = getFavoriteGames($userId);
 $message = '';
+$error = '';
 
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
@@ -89,53 +90,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     $newPassword = $_POST['new_password'] ?? '';
     $confirmPassword = $_POST['confirm_password'] ?? '';
 
-    try {
-        if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
-            throw new Exception('Please fill in all password fields');
-        }
-
-        if ($newPassword !== $confirmPassword) {
-            throw new Exception('New passwords do not match');
-        }
-
-        if (strlen($newPassword) < PASSWORD_MIN_LENGTH) {
-            throw new Exception("New password must be at least " . PASSWORD_MIN_LENGTH . " characters");
-        }
-
-        if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/', $newPassword)) {
-            throw new Exception("New password must contain uppercase, lowercase, and number");
-        }
-
-        // Verify current password
-        $pdo = getDBConnection();
-        $stmt = $pdo->prepare("SELECT password_hash FROM Users WHERE user_id = ?");
-        $stmt->execute([$userId]);
-        $userData = $stmt->fetch();
-
-        if (!password_verify($currentPassword, $userData['password_hash'])) {
-            throw new Exception('Current password is incorrect');
-        }
-
-        // Update password
-        $newPasswordHash = password_hash($newPassword, PASSWORD_ARGON2ID, [
-            'memory_cost' => 65536,
-            'time_cost' => 4,
-            'threads' => 3
-        ]);
-
-        $stmt = $pdo->prepare("UPDATE Users SET password_hash = ? WHERE user_id = ?");
-        $stmt->execute([$newPasswordHash, $userId]);
-
-        logActivity($userId, 'password_change', 'User changed password');
-
+    if (changePassword($userId, $currentPassword, $newPassword, $confirmPassword)) {
         $_SESSION['message'] = 'Password changed successfully!';
         $_SESSION['message_type'] = 'success';
-
         header('Location: profile.php');
         exit;
-
-    } catch (Exception $e) {
-        $passwordError = $e->getMessage();
+    } else {
+        $error = 'Failed to change password. Please check your inputs.';
     }
 }
 ?>
@@ -186,6 +147,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                         </div>
                         <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
                     <?php endif; ?>
+                    
+                    <?php if (!empty($error)): ?>
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error); ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -201,26 +168,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                                 <h4><?php echo htmlspecialchars($user['username']); ?></h4>
                                 <p class="text-muted mb-1"><?php echo htmlspecialchars($user['email']); ?></p>
                                 <p class="small text-muted">
-                                    Member since <?php echo date('M j, Y', strtotime($user['created_at'])); ?>
+                                    Member since <?php echo date('M j, Y', strtotime($user['created_at'] ?? 'now')); ?>
                                 </p>
                             </div>
 
                             <div class="row text-center">
                                 <div class="col-4">
                                     <div class="stat">
-                                        <div class="stat-number"><?php echo $user['friends_count']; ?></div>
+                                        <div class="stat-number"><?php echo $user['friends_count'] ?? 0; ?></div>
                                         <div class="stat-label">Friends</div>
                                     </div>
                                 </div>
                                 <div class="col-4">
                                     <div class="stat">
-                                        <div class="stat-number"><?php echo $user['schedules_count']; ?></div>
+                                        <div class="stat-number"><?php echo $user['schedules_count'] ?? 0; ?></div>
                                         <div class="stat-label">Schedules</div>
                                     </div>
                                 </div>
                                 <div class="col-4">
                                     <div class="stat">
-                                        <div class="stat-number"><?php echo $user['events_count']; ?></div>
+                                        <div class="stat-number"><?php echo $user['events_count'] ?? 0; ?></div>
                                         <div class="stat-label">Events</div>
                                     </div>
                                 </div>
@@ -236,12 +203,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                             <h3><i class="fas fa-edit"></i> Edit Profile</h3>
                         </div>
                         <div class="card-body">
-                            <?php if (isset($error)): ?>
-                                <div class="alert alert-danger" role="alert">
-                                    <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error); ?>
-                                </div>
-                            <?php endif; ?>
-
                             <form method="POST" action="" novalidate>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
@@ -288,7 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                                                        <?php echo in_array($game['game_id'], array_column($favoriteGames, 'game_id')) ? 'checked' : ''; ?>>
                                                 <label class="form-check-label" for="game_<?php echo $game['game_id']; ?>">
                                                     <strong><?php echo htmlspecialchars($game['titel']); ?></strong>
-                                                    <br><small class="text-muted"><?php echo htmlspecialchars($game['genre']); ?></small>
+                                                    <br><small class="text-muted"><?php echo htmlspecialchars($game['description'] ?? ''); ?></small>
                                                 </label>
                                             </div>
                                         </div>
@@ -308,12 +269,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                             <h3><i class="fas fa-lock"></i> Change Password</h3>
                         </div>
                         <div class="card-body">
-                            <?php if (isset($passwordError)): ?>
-                                <div class="alert alert-danger" role="alert">
-                                    <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($passwordError); ?>
-                                </div>
-                            <?php endif; ?>
-
                             <form method="POST" action="" novalidate>
                                 <div class="mb-3">
                                     <label for="current_password" class="form-label">Current Password</label>
