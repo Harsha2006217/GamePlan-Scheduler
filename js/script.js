@@ -14,6 +14,152 @@
 // Strict mode for security and performance
 'use strict';
 
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize all interactive components
+    initializeCharacterCounters();
+    initializePasswordStrengthMeters();
+    initializeFormValidation();
+    initializeFriendSelection();
+});
+
+/**
+ * Initializes character counters for textareas with a maxlength attribute.
+ */
+function initializeCharacterCounters() {
+    const textareas = document.querySelectorAll('textarea[maxlength]');
+    textareas.forEach(textarea => {
+        const maxLength = textarea.getAttribute('maxlength');
+        let counter = textarea.parentNode.querySelector('.char-counter');
+        if (!counter) {
+            counter = document.createElement('div');
+            counter.className = 'char-counter form-text text-muted';
+            textarea.parentNode.appendChild(counter);
+        }
+
+        const updateCounter = () => {
+            const currentLength = textarea.value.length;
+            counter.textContent = `${currentLength}/${maxLength} karakters`;
+            counter.style.color = (maxLength - currentLength) < 50 ? '#dc3545' : '#6c757d';
+        };
+
+        textarea.addEventListener('input', updateCounter);
+        updateCounter(); // Initial call
+    });
+}
+
+/**
+ * Initializes password strength indicators for password fields.
+ */
+function initializePasswordStrengthMeters() {
+    const passwordInput = document.getElementById('new_password');
+    if (passwordInput) {
+        const strengthIndicator = document.getElementById('password-strength');
+        if (strengthIndicator) {
+            passwordInput.addEventListener('input', () => {
+                const password = passwordInput.value;
+                if (password.length === 0) {
+                    strengthIndicator.innerHTML = '';
+                    return;
+                }
+
+                let strength = 0;
+                if (password.length >= 8) strength++;
+                if (/[a-z]/.test(password)) strength++;
+                if (/[A-Z]/.test(password)) strength++;
+                if (/\d/.test(password)) strength++;
+                if (/[^a-zA-Z\d]/.test(password)) strength++;
+
+                const colors = ['text-danger', 'text-warning', 'text-info', 'text-primary', 'text-success'];
+                const labels = ['Zeer zwak', 'Zwak', 'Redelijk', 'Goed', 'Sterk'];
+                const strengthIndex = Math.max(0, strength - 1);
+
+                strengthIndicator.innerHTML = `
+                    <span class="${colors[strengthIndex]}">
+                        <i class="fas fa-key"></i> ${labels[strengthIndex]}
+                    </span>
+                `;
+            });
+        }
+    }
+}
+
+/**
+ * Initializes client-side form validation for all forms with 'novalidate'.
+ */
+function initializeFormValidation() {
+    const forms = document.querySelectorAll('form[novalidate]');
+    forms.forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+}
+
+/**
+ * Initializes 'Select All' and 'Clear All' functionality for friend selection checkboxes.
+ */
+function initializeFriendSelection() {
+    window.selectAllFriends = () => {
+        document.querySelectorAll('input[name="shared_friends[]"], input[name="friends[]"]').forEach(cb => cb.checked = true);
+    };
+
+    window.clearAllFriends = () => {
+        document.querySelectorAll('input[name="shared_friends[]"], input[name="friends[]"]').forEach(cb => cb.checked = false);
+    };
+}
+
+/**
+ * Validates a schedule form before submission.
+ * @returns {boolean} - True if valid, false otherwise.
+ */
+function validateScheduleForm() {
+    const game = document.getElementById('game_id');
+    const date = document.getElementById('date');
+    const time = document.getElementById('time');
+    let isValid = true;
+
+    if (game.value === '') {
+        alert('Selecteer een game.');
+        isValid = false;
+    }
+
+    const selectedDate = new Date(date.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+        alert('De datum moet vandaag of in de toekomst zijn.');
+        isValid = false;
+    }
+
+    if (time.value === '') {
+        alert('Selecteer een tijd.');
+        isValid = false;
+    }
+
+    return isValid;
+}
+
+/**
+ * GamePlan Scheduler - Advanced Professional JavaScript
+ * Modern ES6+ features with security and user experience enhancements
+ * 
+ * This comprehensive JavaScript framework provides enterprise-level functionality
+ * for form validation, real-time interactions, advanced notifications, and
+ * professional user experience enhancements.
+ * 
+ * @author Harsha Kanaparthi
+ * @version 2.0
+ * @since 2025-09-30
+ */
+
+// Strict mode for security and performance
+'use strict';
+
 // Advanced Global Configuration
 const GamePlanConfig = {
     version: '2.0',

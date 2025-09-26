@@ -17,6 +17,43 @@ define('DB_USER', 'root'); // Change for production
 define('DB_PASS', ''); // Set secure password for production
 define('DB_CHARSET', 'utf8mb4');
 
+// Global connection variable
+$pdo = null;
+
+/**
+ * Get database connection
+ * Creates and returns a PDO connection with error handling
+ */
+function getDbConnection() {
+    global $pdo;
+    
+    // If connection already exists, return it
+    if ($pdo !== null) {
+        return $pdo;
+    }
+    
+    try {
+        // Set DSN (Data Source Name)
+        $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+        
+        // Set PDO options for secure connection
+        $options = [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+        ];
+        
+        // Create new PDO connection
+        $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+        
+        return $pdo;
+    } catch (PDOException $e) {
+        // Log error and display user-friendly message
+        error_log("Database Connection Error: " . $e->getMessage());
+        die("Could not connect to the database. Please contact the administrator.");
+    }
+}
+
 // ===================================
 // PDO OPTIONS - ENTERPRISE SECURITY
 // ===================================
@@ -115,35 +152,43 @@ function regenerateSession() {
 
 // Function to log user activity
 function logActivity($user_id, $action, $details = '') {
-    $sql = "INSERT INTO activity_log (user_id, action, details, ip_address, created_at)
-            VALUES (?, ?, ?, ?, NOW())";
-    $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    executeQuery($sql, [$user_id, $action, $details, $ip]);
+    // Removed activity logging as per schema
+    // Placeholder for future implementation
 }
 
 // Function to check rate limiting (brute force protection)
 function checkRateLimit($identifier, $max_attempts = 5, $time_window = 900) {
-    $sql = "SELECT COUNT(*) as attempts FROM login_attempts
-            WHERE identifier = ? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)";
-    $attempts = fetchOne($sql, [$identifier, $time_window]);
-
-    if ($attempts['attempts'] >= $max_attempts) {
-        return false; // Rate limit exceeded
+    // Simplified rate limiting without database table
+    // Use session-based rate limiting
+    $key = 'rate_limit_' . $identifier;
+    $attempts = $_SESSION[$key] ?? [];
+    $attempts = array_filter($attempts, function($time) use ($time_window) {
+        return $time > time() - $time_window;
+    });
+    if (count($attempts) >= $max_attempts) {
+        return false;
     }
-
-    return true; // OK to proceed
+    return true;
 }
 
 // Function to log failed login attempt
 function logFailedLogin($identifier) {
-    $sql = "INSERT INTO login_attempts (identifier, created_at) VALUES (?, NOW())";
-    executeQuery($sql, [$identifier]);
+    $key = 'rate_limit_' . $identifier;
+    $attempts = $_SESSION[$key] ?? [];
+    $attempts[] = time();
+    $_SESSION[$key] = $attempts;
 }
 
 // Function to clean old login attempts
 function cleanOldLoginAttempts($days = 30) {
-    $sql = "DELETE FROM login_attempts WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)";
-    executeQuery($sql, [$days]);
+    // Clean session-based attempts
+    foreach ($_SESSION as $key => $value) {
+        if (strpos($key, 'rate_limit_') === 0 && is_array($value)) {
+            $_SESSION[$key] = array_filter($value, function($time) use ($days) {
+                return $time > time() - ($days * 24 * 3600);
+            });
+        }
+    }
 }
 
 // Initialize session if not already started
@@ -160,5 +205,18 @@ if (session_status() === PHP_SESSION_NONE) {
 // Clean old login attempts periodically (1% chance)
 if (rand(1, 100) === 1) {
     cleanOldLoginAttempts();
+}
+
+// Session security settings
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_secure', 1); // Only works on HTTPS
+ini_set('session.gc_maxlifetime', 1800); // 30 minutes timeout
+
+// Update user's last activity timestamp
+function updateLastActivity($user_id) {
+    global $pdo;
+    $stmt = $pdo->prepare("UPDATE Users SET last_activity = CURRENT_TIMESTAMP WHERE user_id = ?");
+    $stmt->execute([$user_id]);
 }
 ?>

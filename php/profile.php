@@ -20,21 +20,20 @@ $error = '';
 
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
-    $firstName = trim($_POST['first_name'] ?? '');
-    $lastName = trim($_POST['last_name'] ?? '');
-    $bio = trim($_POST['bio'] ?? '');
+    $username = trim($_POST['username'] ?? '');
 
     try {
-        // Validate bio length
-        if (strlen($bio) > 500) {
-            throw new Exception("Bio cannot exceed 500 characters");
+        // Validate username
+        if (empty($username)) {
+            throw new Exception("Username is required");
+        }
+        if (strlen($username) > 50) {
+            throw new Exception("Username cannot exceed 50 characters");
         }
 
         // Update profile
         updateUserProfile($userId, [
-            'first_name' => $firstName,
-            'last_name' => $lastName,
-            'bio' => $bio
+            'username' => $username
         ]);
 
         $_SESSION['message'] = 'Profile updated successfully!';
@@ -220,24 +219,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['game_id'])) {
                             <form method="POST" action="" novalidate>
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label for="first_name" class="form-label">First Name</label>
-                                        <input type="text" class="form-control" id="first_name" name="first_name"
-                                               value="<?php echo htmlspecialchars($user['first_name'] ?? ''); ?>"
-                                               maxlength="50">
+                                        <label for="username" class="form-label">Username</label>
+                                        <input type="text" class="form-control" id="username" name="username"
+                                               value="<?php echo htmlspecialchars($user['username'] ?? ''); ?>"
+                                               maxlength="50" required>
                                     </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="last_name" class="form-label">Last Name</label>
-                                        <input type="text" class="form-control" id="last_name" name="last_name"
-                                               value="<?php echo htmlspecialchars($user['last_name'] ?? ''); ?>"
-                                               maxlength="50">
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="bio" class="form-label">Bio</label>
-                                    <textarea class="form-control" id="bio" name="bio" rows="3"
-                                              maxlength="500"><?php echo htmlspecialchars($user['bio'] ?? ''); ?></textarea>
-                                    <div class="form-text">Tell others about yourself (max 500 characters)</div>
                                 </div>
 
                                 <button type="submit" name="update_profile" class="btn btn-primary">

@@ -6,7 +6,9 @@ if (!isLoggedIn()) {
     exit;
 }
 $user_id = getCurrentUserId();
-$schedules = getSchedules($user_id);
+$sort_by = $_GET['sort'] ?? 'date';
+$sort_order = $_GET['order'] ?? 'ASC';
+$schedules = getSchedulesWithSorting($user_id, $sort_by, $sort_order);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,9 +37,9 @@ $schedules = getSchedules($user_id);
         <table class="table table-dark">
             <thead>
                 <tr>
-                    <th>Game</th>
-                    <th>Date</th>
-                    <th>Time</th>
+                    <th><a href="?sort=game&order=<?= $sort_by == 'game' && $sort_order == 'ASC' ? 'DESC' : 'ASC' ?>" class="text-light">Game <?= $sort_by == 'game' ? ($sort_order == 'ASC' ? '↑' : '↓') : '' ?></a></th>
+                    <th><a href="?sort=date&order=<?= $sort_by == 'date' && $sort_order == 'ASC' ? 'DESC' : 'ASC' ?>" class="text-light">Date <?= $sort_by == 'date' ? ($sort_order == 'ASC' ? '↑' : '↓') : '' ?></a></th>
+                    <th><a href="?sort=time&order=<?= $sort_by == 'time' && $sort_order == 'ASC' ? 'DESC' : 'ASC' ?>" class="text-light">Time <?= $sort_by == 'time' ? ($sort_order == 'ASC' ? '↑' : '↓') : '' ?></a></th>
                     <th>Friends</th>
                     <th>Actions</th>
                 </tr>

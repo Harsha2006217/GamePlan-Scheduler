@@ -31,13 +31,7 @@ $session_duration_formatted = gmdate("H:i:s", $session_duration);
 
 // Log logout activity with session info
 if ($user_id) {
-    logUserActivity($user_id, 'logout', null, [
-        'session_duration' => $session_duration,
-        'session_duration_formatted' => $session_duration_formatted,
-        'logout_method' => 'manual',
-        'ip_address' => get_client_ip(),
-        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'
-    ]);
+    // Placeholder for logging
 }
 
 // Comprehensive session cleanup
