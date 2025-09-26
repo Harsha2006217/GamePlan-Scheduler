@@ -5,8 +5,8 @@
 RewriteEngine On
 
 # Force HTTPS in production
-# RewriteCond %{HTTPS} off
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # Security Headers
 <IfModule mod_headers.c>

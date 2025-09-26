@@ -1,5 +1,7 @@
 -- GamePlan Scheduler Database Schema
+-- Created for MySQL 8.0+
 
+-- Create database
 CREATE DATABASE IF NOT EXISTS gameplan_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE gameplan_db;
 
@@ -10,23 +12,23 @@ CREATE TABLE Users (
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB;
 
 -- Games table
 CREATE TABLE Games (
     game_id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
     description TEXT
-);
+) ENGINE=InnoDB;
 
--- UserGames table (many-to-many for favorites)
+-- UserGames table (junction for favorite games)
 CREATE TABLE UserGames (
     user_id INT NOT NULL,
     game_id INT NOT NULL,
     PRIMARY KEY (user_id, game_id),
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB;
 
 -- Friends table
 CREATE TABLE Friends (
@@ -34,8 +36,9 @@ CREATE TABLE Friends (
     user_id INT NOT NULL,
     friend_user_id INT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (friend_user_id) REFERENCES Users(user_id) ON DELETE CASCADE
-);
+    FOREIGN KEY (friend_user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_friendship (user_id, friend_user_id)
+) ENGINE=InnoDB;
 
 -- Schedules table
 CREATE TABLE Schedules (
@@ -47,7 +50,7 @@ CREATE TABLE Schedules (
     friends TEXT,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB;
 
 -- Events table
 CREATE TABLE Events (
@@ -61,16 +64,16 @@ CREATE TABLE Events (
     schedule_id INT,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (schedule_id) REFERENCES Schedules(schedule_id) ON DELETE SET NULL
-);
+) ENGINE=InnoDB;
 
--- EventUserMap table (sharing events with friends)
+-- EventUserMap table (for sharing events)
 CREATE TABLE EventUserMap (
     event_id INT NOT NULL,
     friend_id INT NOT NULL,
     PRIMARY KEY (event_id, friend_id),
     FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
     FOREIGN KEY (friend_id) REFERENCES Users(user_id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB;
 
 -- Activity log table
 CREATE TABLE activity_log (
@@ -79,17 +82,19 @@ CREATE TABLE activity_log (
     action VARCHAR(255) NOT NULL,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB;
 
 -- Indexes for performance
 CREATE INDEX idx_users_email ON Users(email);
+CREATE INDEX idx_users_username ON Users(username);
 CREATE INDEX idx_friends_user ON Friends(user_id);
 CREATE INDEX idx_schedules_user ON Schedules(user_id);
 CREATE INDEX idx_events_user ON Events(user_id);
+CREATE INDEX idx_activity_user ON activity_log(user_id);
 
 -- Sample data
 INSERT INTO Games (title, description) VALUES
-('Fortnite', 'Battle royale game'),
+('Fortnite', 'Battle Royale game'),
 ('Minecraft', 'Sandbox building game'),
 ('Among Us', 'Social deduction game');
 
