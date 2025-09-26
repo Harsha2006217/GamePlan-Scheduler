@@ -1,274 +1,164 @@
 <?php
 /**
- * Advanced Database Connection Manager
- * GamePlan Scheduler - Professional Gaming Schedule Management
- * 
- * This module provides secure and optimized database connections with
- * advanced error handling, performance monitoring, and connection pooling.
+ * GamePlan Scheduler - Enterprise Database Configuration
+ * Advanced Gaming Schedule Management Platform
  * 
  * @author Harsha Kanaparthi
- * @version 2.0
- * @since 2025-09-30
+ * @version 2.0 Professional Edition
+ * @security Enterprise-grade PDO with prepared statements
  */
 
-// Database configuration with environment support
-$config = [
-    'host' => $_ENV['DB_HOST'] ?? 'localhost',
-    'dbname' => $_ENV['DB_NAME'] ?? 'gameplan_db',
-    'username' => $_ENV['DB_USER'] ?? 'root',
-    'password' => $_ENV['DB_PASS'] ?? '',
-    'charset' => 'utf8mb4',
-    'port' => $_ENV['DB_PORT'] ?? '3306'
+// ===================================
+// DATABASE CONFIGURATION
+// ===================================
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'gameplan_db');
+define('DB_USER', 'root'); // Change for production
+define('DB_PASS', ''); // Set secure password for production
+define('DB_CHARSET', 'utf8mb4');
+
+// ===================================
+// PDO OPTIONS - ENTERPRISE SECURITY
+// ===================================
+$options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+    PDO::ATTR_PERSISTENT         => true, // Connection pooling
 ];
 
-// Advanced PDO connection with comprehensive error handling
 try {
-    // Build DSN with advanced options
-    $dsn = sprintf(
-        'mysql:host=%s;port=%s;dbname=%s;charset=%s',
-        $config['host'],
-        $config['port'],
-        $config['dbname'],
-        $config['charset']
+    // Create PDO instance
+    $pdo = new PDO(
+        "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET,
+        DB_USER,
+        DB_PASS,
+        $options
     );
-    
-    // PDO options for enhanced security and performance
-    $options = [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => false, // Use native prepared statements
-        PDO::ATTR_PERSISTENT => true, // Enable persistent connections
-        PDO::ATTR_TIMEOUT => 30, // Connection timeout
-        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
-        PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
-        PDO::ATTR_STRINGIFY_FETCHES => false, // Keep data types
-        PDO::ATTR_CASE => PDO::CASE_NATURAL
-    ];
-    
-    // Create PDO instance with comprehensive configuration
-    $pdo = new PDO($dsn, $config['username'], $config['password'], $options);
-    
-    // Set SQL mode for better data integrity
-    $pdo->exec("SET sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
-    
-    // Set timezone to ensure consistency
+
+    // Set timezone for consistent timestamps
     $pdo->exec("SET time_zone = '+00:00'");
-    
-    // Enable performance logging in development
-    if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
-        $pdo->setAttribute(PDO::ATTR_STATEMENT_CLASS, ['PDOStatementWithProfiling']);
-    }
-    
-    // Test connection with a simple query
-    $testQuery = $pdo->query("SELECT 1 as test");
-    if (!$testQuery || $testQuery->fetchColumn() !== '1') {
-        throw new PDOException('Database connection test failed');
-    }
-    
-    // Log successful connection (in development only)
-    if (defined('DEBUG') && DEBUG === true) {
-        error_log("GamePlan DB: Successfully connected to {$config['dbname']} on {$config['host']}:{$config['port']}");
-    }
-    
+    $pdo->exec("SET sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO'");
+
 } catch (PDOException $e) {
-    // Enhanced error logging with context
-    $error_context = [
-        'host' => $config['host'],
-        'port' => $config['port'],
-        'database' => $config['dbname'],
-        'error_code' => $e->getCode(),
-        'error_message' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine(),
-        'timestamp' => date('Y-m-d H:i:s'),
-        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'CLI',
-        'remote_addr' => $_SERVER['REMOTE_ADDR'] ?? 'localhost'
-    ];
-    
-    // Log detailed error information
-    error_log("GamePlan DB Connection Error: " . json_encode($error_context));
-    
-    // Different error handling for development vs production
-    if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
-        // Show detailed error in development
-        die("
-            <div style='font-family: Arial, sans-serif; margin: 20px; padding: 20px; border: 1px solid #ff0000; background: #ffe6e6;'>
-                <h2 style='color: #cc0000;'>Database Connection Failed</h2>
-                <p><strong>Error:</strong> " . htmlspecialchars($e->getMessage()) . "</p>
-                <p><strong>Code:</strong> " . $e->getCode() . "</p>
-                <p><strong>Host:</strong> {$config['host']}:{$config['port']}</p>
-                <p><strong>Database:</strong> {$config['dbname']}</p>
-                <hr>
-                <p><em>This detailed error is only shown in development mode.</em></p>
-            </div>
-        ");
-    } else {
-        // Generic error in production
-        http_response_code(503);
-        die("
-            <div style='font-family: Arial, sans-serif; margin: 20px; padding: 20px; border: 1px solid #ff0000; background: #ffe6e6;'>
-                <h2 style='color: #cc0000;'>Service Temporarily Unavailable</h2>
-                <p>GamePlan Scheduler is temporarily unavailable due to maintenance.</p>
-                <p>Please try again in a few minutes.</p>
-                <p>If the problem persists, please contact support.</p>
-            </div>
-        ");
-    }
-} catch (Exception $e) {
-    // Handle any other connection errors
-    error_log("GamePlan DB: Unexpected error during connection: " . $e->getMessage());
-    
-    http_response_code(500);
-    die("
-        <div style='font-family: Arial, sans-serif; margin: 20px; padding: 20px; border: 1px solid #ff0000; background: #ffe6e6;'>
-            <h2 style='color: #cc0000;'>Internal Server Error</h2>
-            <p>An unexpected error occurred. Please try again later.</p>
-        </div>
-    ");
+    // Log error securely (don't expose in production)
+    error_log("Database connection failed: " . $e->getMessage());
+
+    // Show user-friendly error
+    die("Database connection error. Please try again later.");
 }
 
-/**
- * Get database connection instance
- * @return PDO
- */
-function getDBConnection() {
+// Function to get database connection
+function getDB() {
     global $pdo;
     return $pdo;
 }
 
-/**
- * Execute query with performance monitoring
- * @param string $query
- * @param array $params
- * @return PDOStatement
- */
-function executeQuery($query, $params = []) {
-    global $pdo;
-    
-    $start_time = microtime(true);
-    
+// Function to execute prepared statements safely
+function executeQuery($sql, $params = []) {
     try {
-        $stmt = $pdo->prepare($query);
+        $pdo = getDB();
+        $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-        
-        // Log slow queries in development
-        if (defined('DEBUG') && DEBUG === true) {
-            $execution_time = microtime(true) - $start_time;
-            if ($execution_time > 1.0) { // Log queries slower than 1 second
-                error_log("Slow Query ({$execution_time}s): " . $query);
-            }
-        }
-        
         return $stmt;
-        
     } catch (PDOException $e) {
-        error_log("Query execution failed: " . $e->getMessage() . " | Query: " . $query);
-        throw $e;
+        error_log("Query execution failed: " . $e->getMessage());
+        throw new Exception("Database query error");
     }
 }
 
-/**
- * Get database statistics for monitoring
- * @return array
- */
-function getDatabaseStats() {
-    global $pdo;
-    
-    try {
-        $stats = [];
-        
-        // Get connection info
-        $stats['server_info'] = $pdo->getAttribute(PDO::ATTR_SERVER_INFO);
-        $stats['server_version'] = $pdo->getAttribute(PDO::ATTR_SERVER_VERSION);
-        $stats['connection_status'] = $pdo->getAttribute(PDO::ATTR_CONNECTION_STATUS);
-        
-        // Get database size
-        $sizeQuery = $pdo->query("
-            SELECT 
-                ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb
-            FROM information_schema.tables 
-            WHERE table_schema = DATABASE()
-        ");
-        $stats['database_size_mb'] = $sizeQuery->fetchColumn();
-        
-        // Get table counts
-        $tableQuery = $pdo->query("
-            SELECT 
-                table_name, 
-                table_rows 
-            FROM information_schema.tables 
-            WHERE table_schema = DATABASE()
-            ORDER BY table_rows DESC
-        ");
-        $stats['table_counts'] = $tableQuery->fetchAll();
-        
-        return $stats;
-        
-    } catch (PDOException $e) {
-        error_log("Failed to get database stats: " . $e->getMessage());
-        return ['error' => 'Unable to retrieve database statistics'];
-    }
+// Function to get single row
+function fetchOne($sql, $params = []) {
+    $stmt = executeQuery($sql, $params);
+    return $stmt->fetch();
 }
 
-/**
- * Test database connectivity and performance
- * @return array
- */
-function testDatabaseHealth() {
-    global $pdo;
-    
-    $health = [
-        'status' => 'healthy',
-        'tests' => [],
-        'timestamp' => date('Y-m-d H:i:s')
-    ];
-    
-    // Test 1: Basic connectivity
-    try {
-        $start = microtime(true);
-        $pdo->query("SELECT 1");
-        $health['tests']['connectivity'] = [
-            'status' => 'pass',
-            'time' => round((microtime(true) - $start) * 1000, 2) . 'ms'
-        ];
-    } catch (Exception $e) {
-        $health['status'] = 'unhealthy';
-        $health['tests']['connectivity'] = [
-            'status' => 'fail',
-            'error' => $e->getMessage()
-        ];
-    }
-    
-    // Test 2: Write capability
-    try {
-        $start = microtime(true);
-        $pdo->exec("CREATE TEMPORARY TABLE health_test (id INT)");
-        $pdo->exec("DROP TEMPORARY TABLE health_test");
-        $health['tests']['write_capability'] = [
-            'status' => 'pass',
-            'time' => round((microtime(true) - $start) * 1000, 2) . 'ms'
-        ];
-    } catch (Exception $e) {
-        $health['status'] = 'degraded';
-        $health['tests']['write_capability'] = [
-            'status' => 'fail',
-            'error' => $e->getMessage()
-        ];
-    }
-    
-    return $health;
+// Function to get multiple rows
+function fetchAll($sql, $params = []) {
+    $stmt = executeQuery($sql, $params);
+    return $stmt->fetchAll();
 }
 
-// Register shutdown function to log connection info
-register_shutdown_function(function() {
-    if (defined('DEBUG') && DEBUG === true) {
-        error_log("GamePlan DB: Connection closed gracefully");
-    }
-});
+// Function to get row count
+function rowCount($sql, $params = []) {
+    $stmt = executeQuery($sql, $params);
+    return $stmt->rowCount();
+}
 
-// Initialize performance monitoring if enabled
-if (defined('MONITOR_PERFORMANCE') && MONITOR_PERFORMANCE === true) {
-    $GLOBALS['query_count'] = 0;
-    $GLOBALS['total_query_time'] = 0;
+// Function to insert and get last ID
+function insertAndGetId($sql, $params = []) {
+    $pdo = getDB();
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $pdo->lastInsertId();
+}
+
+// Security function to sanitize input
+function sanitize($input) {
+    return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
+}
+
+// Function to check if user is logged in
+function isLoggedIn() {
+    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+}
+
+// Function to get current user ID
+function getCurrentUserId() {
+    return $_SESSION['user_id'] ?? null;
+}
+
+// Function to regenerate session ID for security
+function regenerateSession() {
+    session_regenerate_id(true);
+}
+
+// Function to log user activity
+function logActivity($user_id, $action, $details = '') {
+    $sql = "INSERT INTO activity_log (user_id, action, details, ip_address, created_at)
+            VALUES (?, ?, ?, ?, NOW())";
+    $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    executeQuery($sql, [$user_id, $action, $details, $ip]);
+}
+
+// Function to check rate limiting (brute force protection)
+function checkRateLimit($identifier, $max_attempts = 5, $time_window = 900) {
+    $sql = "SELECT COUNT(*) as attempts FROM login_attempts
+            WHERE identifier = ? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)";
+    $attempts = fetchOne($sql, [$identifier, $time_window]);
+
+    if ($attempts['attempts'] >= $max_attempts) {
+        return false; // Rate limit exceeded
+    }
+
+    return true; // OK to proceed
+}
+
+// Function to log failed login attempt
+function logFailedLogin($identifier) {
+    $sql = "INSERT INTO login_attempts (identifier, created_at) VALUES (?, NOW())";
+    executeQuery($sql, [$identifier]);
+}
+
+// Function to clean old login attempts
+function cleanOldLoginAttempts($days = 30) {
+    $sql = "DELETE FROM login_attempts WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)";
+    executeQuery($sql, [$days]);
+}
+
+// Initialize session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start([
+        'cookie_httponly' => true,
+        'cookie_secure' => isset($_SERVER['HTTPS']),
+        'cookie_samesite' => 'Strict',
+        'use_strict_mode' => true,
+        'gc_maxlifetime' => 1800, // 30 minutes
+    ]);
+}
+
+// Clean old login attempts periodically (1% chance)
+if (rand(1, 100) === 1) {
+    cleanOldLoginAttempts();
 }
 ?>

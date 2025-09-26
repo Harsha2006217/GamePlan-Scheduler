@@ -1,1025 +1,794 @@
 <?php
-session_start();
-require 'db.php';
+// GamePlan Scheduler - Core Functions Library
+// Professional PHP functions with security, validation, and error handling
 
-// Enhanced security configurations
-ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_secure', 1);
-ini_set('session.use_strict_mode', 1);
+// Database Configuration
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'gameplan_db');
+define('DB_USER', 'root');
+define('DB_PASS', '');
+define('DB_CHARSET', 'utf8mb4');
 
-/**
- * Advanced password hashing with Argon2ID for enterprise security
- * Implements state-of-the-art password security standards
- */
-function hashPassword($password) {
-    return password_hash($password, PASSWORD_ARGON2ID, [
+// Security Configuration
+define('SESSION_LIFETIME', 1800); // 30 minutes
+define('PASSWORD_MIN_LENGTH', 8);
+define('USERNAME_MIN_LENGTH', 3);
+define('MAX_LOGIN_ATTEMPTS', 5);
+define('LOGIN_LOCKOUT_TIME', 900); // 15 minutes
+
+// Initialize session with security settings
+function initSession() {
+    if (session_status() === PHP_SESSION_NONE) {
+        ini_set('session.cookie_httponly', 1);
+        ini_set('session.cookie_secure', 0); // Set to 1 in production with HTTPS
+        ini_set('session.use_strict_mode', 1);
+        ini_set('session.gc_maxlifetime', SESSION_LIFETIME);
+
+        session_start();
+
+        // Regenerate session ID periodically for security
+        if (!isset($_SESSION['created'])) {
+            $_SESSION['created'] = time();
+        } else if (time() - $_SESSION['created'] > 300) { // Regenerate every 5 minutes
+            session_regenerate_id(true);
+            $_SESSION['created'] = time();
+        }
+
+        // Check session expiry
+        if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > SESSION_LIFETIME)) {
+            logoutUser();
+        }
+        $_SESSION['last_activity'] = time();
+    }
+}
+
+// Database Connection
+function getDBConnection() {
+    static $pdo = null;
+
+    if ($pdo === null) {
+        try {
+            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . DB_CHARSET
+            ];
+
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+
+            // Set connection timeout
+            $pdo->setAttribute(PDO::ATTR_TIMEOUT, 30);
+
+        } catch (PDOException $e) {
+            error_log("Database connection failed: " . $e->getMessage());
+            die("Database connection error. Please try again later.");
+        }
+    }
+
+    return $pdo;
+}
+
+// ====================
+// Authentication Functions
+// ====================
+
+// Check if user is logged in
+function isLoggedIn() {
+    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+}
+
+// Get current user ID
+function getCurrentUserId() {
+    return $_SESSION['user_id'] ?? null;
+}
+
+// Get current user data
+function getCurrentUser() {
+    if (!isLoggedIn()) return null;
+
+    static $user = null;
+    if ($user === null) {
+        $user = getUserById(getCurrentUserId());
+    }
+    return $user;
+}
+
+// Login user
+function loginUser($email, $password) {
+    $pdo = getDBConnection();
+
+    // Check for brute force protection
+    if (isLoginLocked($email)) {
+        throw new Exception("Account temporarily locked due to too many failed login attempts. Try again later.");
+    }
+
+    // Get user by email
+    $stmt = $pdo->prepare("SELECT user_id, username, email, password_hash FROM Users WHERE email = ?");
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        logFailedLogin($email);
+        throw new Exception("Invalid email or password");
+    }
+
+    // Verify password
+    if (!password_verify($password, $user['password_hash'])) {
+        logFailedLogin($email);
+        throw new Exception("Invalid email or password");
+    }
+
+    // Clear failed login attempts on successful login
+    clearFailedLogins($email);
+
+    // Update last activity
+    updateUserActivity($user['user_id']);
+
+    // Set session data
+    $_SESSION['user_id'] = $user['user_id'];
+    $_SESSION['username'] = $user['username'];
+    $_SESSION['email'] = $user['email'];
+
+    // Log successful login
+    logActivity($user['user_id'], 'login', 'User logged in successfully');
+
+    return $user;
+}
+
+// Register new user
+function registerUser($username, $email, $password) {
+    $pdo = getDBConnection();
+
+    // Validate input
+    if (empty($username) || empty($email) || empty($password)) {
+        throw new Exception("All fields are required");
+    }
+
+    if (strlen($username) < USERNAME_MIN_LENGTH) {
+        throw new Exception("Username must be at least " . USERNAME_MIN_LENGTH . " characters");
+    }
+
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
+        throw new Exception("Username can only contain letters, numbers, and underscores");
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        throw new Exception("Please enter a valid email address");
+    }
+
+    if (strlen($password) < PASSWORD_MIN_LENGTH) {
+        throw new Exception("Password must be at least " . PASSWORD_MIN_LENGTH . " characters");
+    }
+
+    if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/', $password)) {
+        throw new Exception("Password must contain at least one uppercase letter, one lowercase letter, and one number");
+    }
+
+    // Check if username or email already exists
+    $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE username = ? OR email = ?");
+    $stmt->execute([$username, $email]);
+    if ($stmt->fetch()) {
+        throw new Exception("Username or email already exists");
+    }
+
+    // Hash password
+    $passwordHash = password_hash($password, PASSWORD_ARGON2ID, [
         'memory_cost' => 65536,
         'time_cost' => 4,
         'threads' => 3
     ]);
+
+    // Insert user
+    $stmt = $pdo->prepare("INSERT INTO Users (username, email, password_hash, created_at) VALUES (?, ?, ?, NOW())");
+    $stmt->execute([$username, $email, $passwordHash]);
+
+    $userId = $pdo->lastInsertId();
+
+    // Log registration
+    logActivity($userId, 'register', 'User account created');
+
+    return $userId;
 }
 
-/**
- * Enhanced user login with advanced brute force protection
- * Implements comprehensive security measures and activity logging
- */
-function loginUser($email, $password) {
-    global $pdo;
-    
-    try {
-        // Check for brute force attempts with sliding window
-        $stmt = $pdo->prepare("SELECT COUNT(*) as attempts FROM login_attempts 
-                              WHERE ip_address = ? AND created_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)");
-        $stmt->execute([get_client_ip()]);
-        $attempts = $stmt->fetch()['attempts'];
-        
-        if ($attempts >= 5) {
-            logSecurityEvent('login_blocked_brute_force', [
-                'ip' => get_client_ip(),
-                'email' => $email,
-                'attempts' => $attempts
-            ]);
-            return ['success' => false, 'message' => 'Te veel inlogpogingen. Probeer over 15 minuten opnieuw.'];
-        }
-        
-        // Enhanced user lookup with account status validation
-        $stmt = $pdo->prepare("SELECT user_id, username, email, password_hash, account_status, 
-                              last_login, failed_login_attempts 
-                              FROM Users WHERE email = :email");
-        $stmt->bindParam(':email', $email);
-        $stmt->execute();
-        $user = $stmt->fetch();
-
-        if ($user && $user['account_status'] === 'active' && 
-            password_verify($password, $user['password_hash'])) {
-            
-            // Clear failed attempts on successful login
-            $stmt = $pdo->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
-            $stmt->execute([get_client_ip()]);
-            
-            // Reset user failed attempts counter
-            $stmt = $pdo->prepare("UPDATE Users SET failed_login_attempts = 0, 
-                                  last_login = NOW(), last_activity = NOW() WHERE user_id = ?");
-            $stmt->execute([$user['user_id']]);
-            
-            // Create secure session
-            $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-            $_SESSION['login_time'] = time();
-            $_SESSION['ip_address'] = get_client_ip();
-            session_regenerate_id(true);
-            
-            // Log successful login
-            logUserActivity($user['user_id'], 'login', null, [
-                'ip_address' => get_client_ip(),
-                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-                'login_method' => 'standard'
-            ]);
-            
-            return ['success' => true, 'message' => 'Succesvol ingelogd', 'user' => $user];
-            
-        } else {
-            // Record failed attempt with enhanced logging
-            $stmt = $pdo->prepare("INSERT INTO login_attempts 
-                                  (ip_address, email_attempted, user_agent, created_at) 
-                                  VALUES (?, ?, ?, NOW())");
-            $stmt->execute([
-                get_client_ip(), 
-                $email, 
-                $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'
-            ]);
-            
-            // Increment user failed attempts if user exists
-            if ($user) {
-                $stmt = $pdo->prepare("UPDATE Users SET failed_login_attempts = failed_login_attempts + 1 
-                                      WHERE user_id = ?");
-                $stmt->execute([$user['user_id']]);
-            }
-            
-            return ['success' => false, 'message' => 'Ongeldige email of wachtwoord'];
-        }
-        
-    } catch (Exception $e) {
-        error_log("Login error: " . $e->getMessage());
-        return ['success' => false, 'message' => 'Er is een fout opgetreden bij het inloggen'];
+// Logout user
+function logoutUser() {
+    if (isLoggedIn()) {
+        logActivity(getCurrentUserId(), 'logout', 'User logged out');
     }
-}
 
-/**
- * Enhanced client IP detection with proxy support
- */
-function get_client_ip() {
-    $ipkeys = ['HTTP_CF_CONNECTING_IP', 'HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 
-               'HTTP_X_FORWARDED', 'HTTP_X_CLUSTER_CLIENT_IP', 'HTTP_FORWARDED_FOR', 
-               'HTTP_FORWARDED', 'REMOTE_ADDR'];
-    
-    foreach ($ipkeys as $key) {
-        if (array_key_exists($key, $_SERVER) === true) {
-            foreach (explode(',', $_SERVER[$key]) as $ip) {
-                $ip = trim($ip);
-                if (filter_var($ip, FILTER_VALIDATE_IP, 
-                    FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
-                    return $ip;
-                }
-            }
-        }
-    }
-    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-}
-
-/**
- * Advanced CSRF protection with token validation
- */
-function validateCSRF($token) {
-    if (!isset($_SESSION['csrf_token']) || empty($token)) {
-        return false;
-    }
-    return hash_equals($_SESSION['csrf_token'], $token);
-}
-
-/**
- * Comprehensive input validation system with advanced security
- */
-function validateInput($input, $type, $options = []) {
-    $input = trim($input);
-    
-    switch ($type) {
-        case 'username':
-            if (strlen($input) < 3 || strlen($input) > 50) return false;
-            return preg_match('/^[a-zA-Z0-9_-]+$/', $input);
-            
-        case 'email':
-            if (strlen($input) > 100) return false;
-            $email = filter_var($input, FILTER_VALIDATE_EMAIL);
-            if (!$email) return false;
-            // Additional domain validation
-            $domain = substr(strrchr($email, "@"), 1);
-            return checkdnsrr($domain, "MX");
-            
-        case 'password':
-            if (strlen($input) < 8 || strlen($input) > 128) return false;
-            return preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/', $input);
-            
-        case 'title':
-            if (empty($input)) return false;
-            // Fix #1001 - Enhanced whitespace validation
-            if (preg_match('/^\s*$/', $input)) return false;
-            if (strlen($input) > 100) return false;
-            // Check for potentially harmful content
-            if (preg_match('/[<>"\']/', $input)) return false;
-            return true;
-            
-        case 'date':
-            if (empty($input)) return false;
-            $date = DateTime::createFromFormat('Y-m-d', $input);
-            // Fix #1004 - Enhanced date validation
-            if (!$date || $date->format('Y-m-d') !== $input) return false;
-            if ($date < new DateTime('today')) return false;
-            if ($date > new DateTime('+2 years')) return false;
-            return true;
-            
-        case 'time':
-            if (empty($input)) return false;
-            if (!preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/', $input)) return false;
-            return true;
-            
-        case 'description':
-            // Fix #1004 - Enhanced description validation
-            if (strlen($input) > 1000) return false;
-            if (!empty($input) && preg_match('/^\s+$/', $input)) return false;
-            return true;
-            
-        case 'games':
-            // Fix #1001 - Enhanced games validation
-            if (empty($input)) return false;
-            if (preg_match('/^\s+$/', $input)) return false;
-            if (strlen($input) > 500) return false;
-            // Check for harmful content
-            if (preg_match('/[<>]/', $input)) return false;
-            return true;
-            
-        default:
-            return !empty(trim($input));
-    }
-}
-
-/**
- * Enhanced user profile management with comprehensive data
- */
-function getProfile($user_id) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            SELECT u.*, 
-                   COUNT(DISTINCT f.friend_id) as friend_count, 
-                   COUNT(DISTINCT s.schedule_id) as schedule_count, 
-                   COUNT(DISTINCT e.event_id) as event_count,
-                   (SELECT COUNT(*) FROM Friends f2 
-                    WHERE f2.friend_user_id = u.user_id) as mutual_friends,
-                   CASE WHEN u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE) 
-                        THEN 'online' ELSE 'offline' END as status
-            FROM Users u 
-            LEFT JOIN Friends f ON u.user_id = f.user_id 
-            LEFT JOIN Schedules s ON u.user_id = s.user_id AND s.status = 'active'
-            LEFT JOIN Events e ON u.user_id = e.user_id 
-            WHERE u.user_id = :id AND u.account_status = 'active'
-            GROUP BY u.user_id
-        ");
-        $stmt->bindParam(':id', $user_id, PDO::PARAM_INT);
-        $stmt->execute();
-        return $stmt->fetch();
-    } catch (Exception $e) {
-        error_log("Error getting profile: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Advanced friend management with comprehensive validation
- */
-function addFriend($user_id, $friend_username) {
-    global $pdo;
-    
-    try {
-        $pdo->beginTransaction();
-        
-        // Enhanced validation
-        if (!validateInput($friend_username, 'username')) {
-            return ['success' => false, 'message' => 'Ongeldige username format'];
-        }
-        
-        // Find friend with comprehensive checks
-        $stmt = $pdo->prepare("SELECT user_id, username, account_status, privacy_level 
-                              FROM Users WHERE username = :username AND user_id != :user");
-        $stmt->execute([':username' => $friend_username, ':user' => $user_id]);
-        $friend = $stmt->fetch();
-        
-        if (!$friend || $friend['account_status'] !== 'active') {
-            return ['success' => false, 'message' => 'Gebruiker niet gevonden of niet actief'];
-        }
-        
-        $friend_id = $friend['user_id'];
-        
-        // Check existing friendship
-        $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM Friends WHERE 
-                              (user_id = :user AND friend_user_id = :friend) OR 
-                              (user_id = :friend AND friend_user_id = :user)");
-        $stmt->execute([':user' => $user_id, ':friend' => $friend_id]);
-        
-        if ($stmt->fetch()['count'] > 0) {
-            return ['success' => false, 'message' => 'Jullie zijn al vrienden'];
-        }
-        
-        // Add bidirectional friendship with timestamps
-        $stmt = $pdo->prepare("INSERT INTO Friends 
-                              (user_id, friend_user_id, status, created_at) 
-                              VALUES (?, ?, 'accepted', NOW())");
-        $stmt->execute([$user_id, $friend_id]);
-        $stmt->execute([$friend_id, $user_id]);
-        
-        // Log friendship creation
-        logUserActivity($user_id, 'friend_added', $friend_id, [
-            'friend_username' => $friend_username
-        ]);
-        
-        $pdo->commit();
-        return ['success' => true, 'message' => 'Vriend succesvol toegevoegd'];
-        
-    } catch (Exception $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollback();
-        }
-        error_log("Error adding friend: " . $e->getMessage());
-        return ['success' => false, 'message' => 'Er is een fout opgetreden'];
-    }
-}
-
-/**
- * Enhanced friends retrieval with filtering and status
- */
-function getFriends($user_id) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            SELECT u.*, f.created_at as friend_since,
-                   CASE WHEN u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE) 
-                        THEN 'online' ELSE 'offline' END as status,
-                   (SELECT COUNT(*) FROM Schedules s 
-                    WHERE FIND_IN_SET(u.user_id, s.friends) AND s.user_id = :user_id) as shared_schedules,
-                   (SELECT COUNT(*) FROM EventUserMap eum 
-                    JOIN Events e ON eum.event_id = e.event_id 
-                    WHERE eum.friend_id = u.user_id AND e.user_id = :user_id2) as shared_events
-            FROM Friends f 
-            JOIN Users u ON f.friend_user_id = u.user_id 
-            WHERE f.user_id = :user_id3 AND u.account_status = 'active' AND f.status = 'accepted'
-            ORDER BY u.last_activity DESC
-        ");
-        $stmt->execute([
-            ':user_id' => $user_id,
-            ':user_id2' => $user_id,
-            ':user_id3' => $user_id
-        ]);
-        return $stmt->fetchAll();
-    } catch (Exception $e) {
-        error_log("Error getting friends: " . $e->getMessage());
-        return [];
-    }
-}
-
-/**
- * Advanced friends filtering with search and sorting
- */
-function getFriendsWithFiltering($user_id, $search_query = '', $status_filter = 'all', $sort_by = 'username') {
-    global $pdo;
-    
-    try {
-        $where_conditions = [];
-        $params = [':user_id' => $user_id, ':user_id2' => $user_id, ':user_id3' => $user_id];
-        
-        // Search filter
-        if (!empty($search_query)) {
-            $where_conditions[] = "u.username LIKE :search";
-            $params[':search'] = '%' . $search_query . '%';
-        }
-        
-        // Status filter
-        if ($status_filter === 'online') {
-            $where_conditions[] = "u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE)";
-        } elseif ($status_filter === 'offline') {
-            $where_conditions[] = "u.last_activity <= DATE_SUB(NOW(), INTERVAL 5 MINUTE)";
-        }
-        
-        $where_sql = !empty($where_conditions) ? 'AND ' . implode(' AND ', $where_conditions) : '';
-        
-        // Sort mapping
-        $sort_mapping = [
-            'username' => 'u.username ASC',
-            'status' => 'status DESC, u.username ASC',
-            'last_activity' => 'u.last_activity DESC',
-            'friend_since' => 'f.created_at DESC'
-        ];
-        $order_by = $sort_mapping[$sort_by] ?? 'u.username ASC';
-        
-        $sql = "
-            SELECT u.*, f.created_at as friend_since,
-                   CASE WHEN u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE) 
-                        THEN 'online' ELSE 'offline' END as status,
-                   (SELECT COUNT(*) FROM Schedules s 
-                    WHERE FIND_IN_SET(u.user_id, s.friends) AND s.user_id = :user_id) as shared_schedules,
-                   (SELECT COUNT(*) FROM EventUserMap eum 
-                    JOIN Events e ON eum.event_id = e.event_id 
-                    WHERE eum.friend_id = u.user_id AND e.user_id = :user_id2) as shared_events,
-                   (SELECT GROUP_CONCAT(g.titel SEPARATOR ', ') 
-                    FROM UserGames ug JOIN Games g ON ug.game_id = g.game_id 
-                    WHERE ug.user_id = u.user_id LIMIT 5) as favorite_games
-            FROM Friends f 
-            JOIN Users u ON f.friend_user_id = u.user_id 
-            WHERE f.user_id = :user_id3 AND u.account_status = 'active' AND f.status = 'accepted'
-            {$where_sql}
-            ORDER BY {$order_by}
-            LIMIT 50
-        ";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll();
-        
-    } catch (Exception $e) {
-        error_log("Error filtering friends: " . $e->getMessage());
-        return [];
-    }
-}
-
-/**
- * Get comprehensive friend statistics
- */
-function getFriendStatistics($user_id) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            SELECT 
-                COUNT(*) as total_friends,
-                COUNT(CASE WHEN u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE) 
-                          THEN 1 END) as online_friends,
-                COUNT(CASE WHEN u.last_activity > DATE_SUB(NOW(), INTERVAL 24 HOUR) 
-                          THEN 1 END) as recent_activity
-            FROM Friends f 
-            JOIN Users u ON f.friend_user_id = u.user_id 
-            WHERE f.user_id = :user_id AND u.account_status = 'active' AND f.status = 'accepted'
-        ");
-        $stmt->execute([':user_id' => $user_id]);
-        return $stmt->fetch() ?: ['total_friends' => 0, 'online_friends' => 0, 'recent_activity' => 0];
-    } catch (Exception $e) {
-        error_log("Error getting friend statistics: " . $e->getMessage());
-        return ['total_friends' => 0, 'online_friends' => 0, 'recent_activity' => 0];
-    }
-}
-
-/**
- * Enhanced schedule management with comprehensive validation
- */
-function getSchedules($user_id) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            SELECT s.*, g.titel as game_titel, g.genre, g.description as game_description,
-                   COUNT(CASE WHEN FIND_IN_SET(f.friend_user_id, s.friends) 
-                             AND u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE) 
-                         THEN 1 END) as online_friends_count
-            FROM Schedules s 
-            LEFT JOIN Games g ON s.game_id = g.game_id 
-            LEFT JOIN Friends f ON f.user_id = s.user_id
-            LEFT JOIN Users u ON f.friend_user_id = u.user_id
-            WHERE s.user_id = :user_id AND s.status = 'active'
-            GROUP BY s.schedule_id
-            ORDER BY s.date ASC, s.time ASC
-        ");
-        $stmt->execute([':user_id' => $user_id]);
-        return $stmt->fetchAll();
-    } catch (Exception $e) {
-        error_log("Error getting schedules: " . $e->getMessage());
-        return [];
-    }
-}
-
-/**
- * Enhanced games retrieval with categories and ratings
- */
-function getGames() {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            SELECT *, 
-                   (SELECT COUNT(*) FROM UserGames WHERE game_id = Games.game_id) as popularity_count
-            FROM Games 
-            WHERE status = 'active'
-            ORDER BY popularity_count DESC, titel ASC
-        ");
-        $stmt->execute();
-        return $stmt->fetchAll();
-    } catch (Exception $e) {
-        error_log("Error getting games: " . $e->getMessage());
-        return [];
-    }
-}
-
-/**
- * Enhanced favorite games management
- */
-function getFavoriteGames($user_id) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            SELECT g.*, ug.added_at, ug.play_hours, ug.skill_level
-            FROM UserGames ug 
-            JOIN Games g ON ug.game_id = g.game_id 
-            WHERE ug.user_id = :user_id AND g.status = 'active'
-            ORDER BY ug.added_at DESC, g.titel ASC
-        ");
-        $stmt->execute([':user_id' => $user_id]);
-        return $stmt->fetchAll();
-    } catch (Exception $e) {
-        error_log("Error getting favorite games: " . $e->getMessage());
-        return [];
-    }
-}
-
-/**
- * Enhanced add favorite game with duplicate prevention
- */
-function addFavoriteGame($user_id, $game_id) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            INSERT IGNORE INTO UserGames (user_id, game_id, added_at) 
-            VALUES (?, ?, NOW())
-        ");
-        $result = $stmt->execute([$user_id, $game_id]);
-        
-        if ($result && $stmt->rowCount() > 0) {
-            logUserActivity($user_id, 'game_added', $game_id);
-            return true;
-        }
-        return false;
-    } catch (Exception $e) {
-        error_log("Error adding favorite game: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Enhanced edit functions with comprehensive validation and logging
- */
-function editSchedule($schedule_id, $update_data) {
-    global $pdo;
-    
-    try {
-        $pdo->beginTransaction();
-        
-        $friends_str = is_array($update_data['friends']) ? 
-                      implode(',', array_filter($update_data['friends'], 'is_numeric')) : '';
-        
-        $stmt = $pdo->prepare("
-            UPDATE Schedules 
-            SET game_id = ?, date = ?, time = ?, friends = ?, 
-                notes = ?, priority = ?, duration = ?, updated_at = NOW() 
-            WHERE schedule_id = ?
-        ");
-        
-        $result = $stmt->execute([
-            $update_data['game_id'], 
-            $update_data['date'], 
-            $update_data['time'], 
-            $friends_str,
-            $update_data['notes'] ?? '',
-            $update_data['priority'] ?? 'medium',
-            $update_data['duration'] ?? null,
-            $schedule_id
-        ]);
-        
-        if ($result) {
-            logUserActivity($_SESSION['user_id'] ?? 0, 'schedule_updated', $schedule_id, $update_data);
-            $pdo->commit();
-            return ['success' => true, 'message' => 'Schema succesvol bijgewerkt'];
-        }
-        
-        $pdo->rollBack();
-        return ['success' => false, 'message' => 'Fout bij bijwerken schema'];
-        
-    } catch (Exception $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        error_log("Error editing schedule: " . $e->getMessage());
-        return ['success' => false, 'message' => 'Database fout bij bijwerken'];
-    }
-}
-
-function editEvent($event_id, $update_data) {
-    global $pdo;
-    
-    try {
-        $pdo->beginTransaction();
-        
-        // Update main event
-        $stmt = $pdo->prepare("
-            UPDATE Events 
-            SET title = ?, date = ?, time = ?, description = ?, reminder = ?, 
-                schedule_id = ?, event_type = ?, max_participants = ?, updated_at = NOW() 
-            WHERE event_id = ?
-        ");
-        
-        $result = $stmt->execute([
-            $update_data['title'],
-            $update_data['date'],
-            $update_data['time'],
-            $update_data['description'] ?? '',
-            $update_data['reminder'] ?? '',
-            $update_data['schedule_id'] ?? null,
-            $update_data['event_type'] ?? 'tournament',
-            $update_data['max_participants'] ?? null,
-            $event_id
-        ]);
-        
-        if (!$result) {
-            $pdo->rollBack();
-            return ['success' => false, 'message' => 'Fout bij bijwerken evenement'];
-        }
-        
-        // Update shared friends
-        $stmt = $pdo->prepare("DELETE FROM EventUserMap WHERE event_id = ?");
-        $stmt->execute([$event_id]);
-        
-        if (!empty($update_data['shared_friends']) && is_array($update_data['shared_friends'])) {
-            $stmt = $pdo->prepare("INSERT INTO EventUserMap (event_id, friend_id, shared_at) VALUES (?, ?, NOW())");
-            foreach ($update_data['shared_friends'] as $friend_id) {
-                if (is_numeric($friend_id)) {
-                    $stmt->execute([$event_id, $friend_id]);
-                }
-            }
-        }
-        
-        logUserActivity($_SESSION['user_id'] ?? 0, 'event_updated', $event_id, $update_data);
-        $pdo->commit();
-        return ['success' => true, 'message' => 'Evenement succesvol bijgewerkt'];
-        
-    } catch (Exception $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        error_log("Error editing event: " . $e->getMessage());
-        return ['success' => false, 'message' => 'Database fout bij bijwerken'];
-    }
-}
-
-/**
- * Enhanced delete functions with comprehensive logging
- */
-function deleteSchedule($schedule_id, $user_id = null) {
-    global $pdo;
-    
-    try {
-        $user_id = $user_id ?? $_SESSION['user_id'] ?? 0;
-        
-        $stmt = $pdo->prepare("DELETE FROM Schedules WHERE schedule_id = ? AND user_id = ?");
-        $result = $stmt->execute([$schedule_id, $user_id]);
-        
-        if ($result && $stmt->rowCount() > 0) {
-            logUserActivity($user_id, 'schedule_deleted', $schedule_id);
-            return true;
-        }
-        return false;
-    } catch (Exception $e) {
-        error_log("Error deleting schedule: " . $e->getMessage());
-        return false;
-    }
-}
-
-function deleteEvent($event_id, $user_id = null) {
-    global $pdo;
-    
-    try {
-        $pdo->beginTransaction();
-        $user_id = $user_id ?? $_SESSION['user_id'] ?? 0;
-        
-        // Delete shared mappings first
-        $stmt = $pdo->prepare("DELETE FROM EventUserMap WHERE event_id = ?");
-        $stmt->execute([$event_id]);
-        
-        // Delete the event
-        $stmt = $pdo->prepare("DELETE FROM Events WHERE event_id = ? AND user_id = ?");
-        $result = $stmt->execute([$event_id, $user_id]);
-        
-        if ($result && $stmt->rowCount() > 0) {
-            logUserActivity($user_id, 'event_deleted', $event_id);
-            $pdo->commit();
-            return true;
-        }
-        
-        $pdo->rollBack();
-        return false;
-        
-    } catch (Exception $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        error_log("Error deleting event: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Enhanced logout with comprehensive cleanup
- */
-function logout() {
-    $user_id = $_SESSION['user_id'] ?? null;
-    
-    if ($user_id) {
-        logUserActivity($user_id, 'logout');
-    }
-    
+    // Clear session
     session_unset();
     session_destroy();
-    session_write_close();
-    setcookie(session_name(), '', 0, '/');
-    session_regenerate_id(true);
-    header("Location: login.php");
-    exit;
-}
 
-/**
- * Enhanced activity retrieval for dashboard
- */
-function getUpcomingActivities($user_id, $days = 7) {
-    global $pdo;
-    
-    try {
-        // Get schedules
-        $stmt = $pdo->prepare("
-            SELECT 'schedule' as type, s.schedule_id as id, g.titel as title, 
-                   s.date, s.time, s.friends, g.genre, s.priority, s.notes as description
-            FROM Schedules s 
-            JOIN Games g ON s.game_id = g.game_id 
-            WHERE s.user_id = :user AND s.date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :days DAY) 
-            AND s.status = 'active'
-        ");
-        $stmt->execute([':user' => $user_id, ':days' => $days]);
-        $schedules = $stmt->fetchAll();
-        
-        // Get events
-        $stmt = $pdo->prepare("
-            SELECT 'event' as type, event_id as id, title, date, time, description, 
-                   reminder, event_type, max_participants
-            FROM Events 
-            WHERE user_id = :user AND date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL :days DAY)
-        ");
-        $stmt->execute([':user' => $user_id, ':days' => $days]);
-        $events = $stmt->fetchAll();
-        
-        // Combine and sort
-        $activities = array_merge($schedules, $events);
-        usort($activities, function($a, $b) {
-            $datetime_a = strtotime($a['date'] . ' ' . $a['time']);
-            $datetime_b = strtotime($b['date'] . ' ' . $b['time']);
-            return $datetime_a - $datetime_b;
-        });
-        
-        return $activities;
-        
-    } catch (Exception $e) {
-        error_log("Error getting upcoming activities: " . $e->getMessage());
-        return [];
+    // Clear remember me cookie if exists
+    if (isset($_COOKIE['remember_token'])) {
+        setcookie('remember_token', '', time() - 3600, '/', '', true, true);
     }
 }
 
-/**
- * Enhanced user statistics with comprehensive metrics
- */
-function getUserStats($user_id) {
-    global $pdo;
-    
-    try {
-        $stats = [];
-        
-        // Friend statistics
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*) as friends, 
-                   COUNT(CASE WHEN u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE) 
-                             THEN 1 END) as active_friends
-            FROM Friends f 
-            JOIN Users u ON f.friend_user_id = u.user_id 
-            WHERE f.user_id = ?
-        ");
-        $stmt->execute([$user_id]);
-        $friend_stats = $stmt->fetch();
-        $stats['friends'] = $friend_stats['friends'];
-        $stats['active_friends'] = $friend_stats['active_friends'];
-        
-        // Activity statistics
-        $stmt = $pdo->prepare("
-            SELECT 
-                COUNT(CASE WHEN s.date >= CURDATE() THEN 1 END) as upcoming_schedules,
-                COUNT(CASE WHEN e.date >= CURDATE() THEN 1 END) as upcoming_events
-            FROM (SELECT date FROM Schedules WHERE user_id = ? AND status = 'active') s
-            FULL OUTER JOIN (SELECT date FROM Events WHERE user_id = ?) e ON 1=1
-        ");
-        $stmt->execute([$user_id, $user_id]);
-        $activity_stats = $stmt->fetch();
-        $stats['upcoming_events'] = $activity_stats['upcoming_events'] ?? 0;
-        $stats['upcoming_schedules'] = $activity_stats['upcoming_schedules'] ?? 0;
-        
-        return $stats;
-        
-    } catch (Exception $e) {
-        error_log("Error getting user statistics: " . $e->getMessage());
-        return ['friends' => 0, 'active_friends' => 0, 'upcoming_events' => 0, 'upcoming_schedules' => 0];
-    }
+// ====================
+// User Management Functions
+// ====================
+
+// Get user by ID
+function getUserById($userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("SELECT user_id, username, email, first_name, last_name, bio, avatar_url, last_activity, created_at FROM Users WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    return $stmt->fetch();
 }
 
-/**
- * Advanced activity logging system
- */
-function logUserActivity($user_id, $action, $target_id = null, $metadata = []) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO user_activity_log (user_id, action, target_id, metadata, ip_address, user_agent, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, NOW())
-        ");
-        
-        $stmt->execute([
-            $user_id,
-            $action,
-            $target_id,
-            json_encode($metadata),
-            get_client_ip(),
-            $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'
-        ]);
-        
-    } catch (Exception $e) {
-        error_log("Error logging user activity: " . $e->getMessage());
+// Get user profile (with additional data)
+function getUserProfile($userId) {
+    $user = getUserById($userId);
+    if ($user) {
+        // Add additional profile data
+        $user['friends_count'] = getFriendsCount($userId);
+        $user['schedules_count'] = getSchedulesCount($userId);
+        $user['events_count'] = getEventsCount($userId);
     }
+    return $user;
 }
 
-/**
- * Security event logging
- */
-function logSecurityEvent($event_type, $data = []) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO security_log (event_type, data, ip_address, user_agent, created_at) 
-            VALUES (?, ?, ?, ?, NOW())
-        ");
-        
-        $stmt->execute([
-            $event_type,
-            json_encode($data),
-            get_client_ip(),
-            $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'
-        ]);
-        
-    } catch (Exception $e) {
-        error_log("Error logging security event: " . $e->getMessage());
-    }
-}
+// Update user profile
+function updateUserProfile($userId, $data) {
+    $pdo = getDBConnection();
 
-/**
- * Validate friends list for security
- */
-function validateFriendsList($user_id, $friend_ids) {
-    global $pdo;
-    
-    try {
-        if (empty($friend_ids)) return [];
-        
-        $placeholders = str_repeat('?,', count($friend_ids) - 1) . '?';
-        $stmt = $pdo->prepare("
-            SELECT friend_user_id 
-            FROM Friends 
-            WHERE user_id = ? AND friend_user_id IN ($placeholders)
-        ");
-        
-        $stmt->execute(array_merge([$user_id], $friend_ids));
-        return array_column($stmt->fetchAll(), 'friend_user_id');
-        
-    } catch (Exception $e) {
-        error_log("Error validating friends list: " . $e->getMessage());
-        return [];
-    }
-}
+    $allowedFields = ['first_name', 'last_name', 'bio'];
+    $updates = [];
+    $params = [];
 
-/**
- * Professional login check with session validation
- */
-function isLoggedIn() {
-    if (!isset($_SESSION['user_id']) || !isset($_SESSION['username'])) {
-        return false;
-    }
-    
-    // Check session timeout (30 minutes)
-    if (isset($_SESSION['login_time']) && 
-        (time() - $_SESSION['login_time']) > 1800) {
-        logout();
-        return false;
-    }
-    
-    // Check IP consistency for security
-    if (isset($_SESSION['ip_address']) && 
-        $_SESSION['ip_address'] !== get_client_ip()) {
-        logout();
-        return false;
-    }
-    
-    return true;
-}
-
-/**
- * Time ago helper function
- */
-function timeAgo($datetime) {
-    $time = strtotime($datetime);
-    $now = time();
-    $diff = $now - $time;
-    
-    if ($diff < 60) return 'net';
-    if ($diff < 3600) return floor($diff / 60) . ' min geleden';
-    if ($diff < 86400) return floor($diff / 3600) . ' uur geleden';
-    if ($diff < 2592000) return floor($diff / 86400) . ' dagen geleden';
-    
-    return date('j M Y', $time);
-}
-
-/**
- * Get events with advanced filtering capabilities
- */
-function getEventsWithFiltering($user_id, $sort_by = 'date', $sort_order = 'ASC', $filter_type = 'all', $search_query = '') {
-    global $pdo;
-    
-    try {
-        $where_conditions = ['e.user_id = :user_id'];
-        $params = [':user_id' => $user_id];
-        
-        // Filter conditions
-        switch ($filter_type) {
-            case 'upcoming':
-                $where_conditions[] = 'e.date >= CURDATE()';
-                break;
-            case 'past':
-                $where_conditions[] = 'e.date < CURDATE()';
-                break;
-            case 'tournament':
-                $where_conditions[] = "e.event_type = 'tournament'";
-                break;
-            case 'meetup':
-                $where_conditions[] = "e.event_type = 'meetup'";
-                break;
-            case 'shared':
-                $where_conditions[] = 'eum.friend_id IS NOT NULL';
-                break;
+    foreach ($data as $field => $value) {
+        if (in_array($field, $allowedFields)) {
+            $updates[] = "$field = ?";
+            $params[] = $value;
         }
-        
-        // Search condition
-        if (!empty($search_query)) {
-            $where_conditions[] = '(e.title LIKE :search OR e.description LIKE :search)';
-            $params[':search'] = '%' . $search_query . '%';
+    }
+
+    if (empty($updates)) {
+        throw new Exception("No valid fields to update");
+    }
+
+    $params[] = $userId;
+    $sql = "UPDATE Users SET " . implode(', ', $updates) . " WHERE user_id = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    logActivity($userId, 'profile_update', 'User profile updated');
+}
+
+// Update user activity
+function updateUserActivity($userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("UPDATE Users SET last_activity = NOW() WHERE user_id = ?");
+    $stmt->execute([$userId]);
+}
+
+// ====================
+// Friend Management Functions
+// ====================
+
+// Add friend
+function addFriend($userId, $friendUsername) {
+    $pdo = getDBConnection();
+
+    // Get friend user ID
+    $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE username = ?");
+    $stmt->execute([$friendUsername]);
+    $friend = $stmt->fetch();
+
+    if (!$friend) {
+        throw new Exception("User not found");
+    }
+
+    if ($friend['user_id'] == $userId) {
+        throw new Exception("You cannot add yourself as a friend");
+    }
+
+    // Check if already friends
+    $stmt = $pdo->prepare("SELECT friend_id FROM Friends WHERE (user_id = ? AND friend_user_id = ?) OR (user_id = ? AND friend_user_id = ?)");
+    $stmt->execute([$userId, $friend['user_id'], $friend['user_id'], $userId]);
+    if ($stmt->fetch()) {
+        throw new Exception("You are already friends with this user");
+    }
+
+    // Add friendship (bidirectional)
+    $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_user_id) VALUES (?, ?)");
+    $stmt->execute([$userId, $friend['user_id']]);
+
+    logActivity($userId, 'friend_add', "Added friend: $friendUsername");
+}
+
+// Remove friend
+function removeFriend($userId, $friendId) {
+    $pdo = getDBConnection();
+
+    // Remove friendship (both directions)
+    $stmt = $pdo->prepare("DELETE FROM Friends WHERE (user_id = ? AND friend_user_id = ?) OR (user_id = ? AND friend_user_id = ?)");
+    $stmt->execute([$userId, $friendId, $friendId, $userId]);
+
+    if ($stmt->rowCount() == 0) {
+        throw new Exception("Friend relationship not found");
+    }
+
+    logActivity($userId, 'friend_remove', "Removed friend with ID: $friendId");
+}
+
+// Get friends list
+function getFriends($userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("
+        SELECT u.user_id, u.username, u.last_activity
+        FROM Users u
+        INNER JOIN Friends f ON (f.friend_user_id = u.user_id AND f.user_id = ?) OR (f.user_id = u.user_id AND f.friend_user_id = ?)
+        WHERE u.user_id != ?
+        ORDER BY u.last_activity DESC
+    ");
+    $stmt->execute([$userId, $userId, $userId]);
+    return $stmt->fetchAll();
+}
+
+// Get online friends
+function getOnlineFriends($userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("
+        SELECT u.user_id, u.username, u.last_activity
+        FROM Users u
+        INNER JOIN Friends f ON (f.friend_user_id = u.user_id AND f.user_id = ?) OR (f.user_id = u.user_id AND f.friend_user_id = ?)
+        WHERE u.user_id != ? AND u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+        ORDER BY u.last_activity DESC
+    ");
+    $stmt->execute([$userId, $userId, $userId]);
+    return $stmt->fetchAll();
+}
+
+// Search users
+function searchUsers($query, $excludeUserId = null) {
+    $pdo = getDBConnection();
+    $sql = "SELECT user_id, username FROM Users WHERE username LIKE ? AND user_id != ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(['%' . $query . '%', $excludeUserId]);
+    return $stmt->fetchAll();
+}
+
+// ====================
+// Game Management Functions
+// ====================
+
+// Get all games
+function getGames() {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("SELECT * FROM Games ORDER BY titel ASC");
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+// Get game by ID
+function getGameById($gameId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("SELECT * FROM Games WHERE game_id = ?");
+    $stmt->execute([$gameId]);
+    return $stmt->fetch();
+}
+
+// ====================
+// Favorite Games Functions
+// ====================
+
+// Add favorite game
+function addFavoriteGame($userId, $gameId) {
+    $pdo = getDBConnection();
+
+    // Check if game exists
+    if (!getGameById($gameId)) {
+        throw new Exception("Game not found");
+    }
+
+    // Check if already favorite
+    $stmt = $pdo->prepare("SELECT user_game_id FROM UserGames WHERE user_id = ? AND game_id = ?");
+    $stmt->execute([$userId, $gameId]);
+    if ($stmt->fetch()) {
+        throw new Exception("Game is already in your favorites");
+    }
+
+    // Add favorite
+    $stmt = $pdo->prepare("INSERT INTO UserGames (user_id, game_id) VALUES (?, ?)");
+    $stmt->execute([$userId, $gameId]);
+
+    logActivity($userId, 'favorite_add', "Added favorite game ID: $gameId");
+}
+
+// Remove favorite game
+function removeFavoriteGame($userId, $gameId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("DELETE FROM UserGames WHERE user_id = ? AND game_id = ?");
+    $stmt->execute([$userId, $gameId]);
+
+    if ($stmt->rowCount() == 0) {
+        throw new Exception("Favorite game not found");
+    }
+
+    logActivity($userId, 'favorite_remove', "Removed favorite game ID: $gameId");
+}
+
+// Get favorite games
+function getFavoriteGames($userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("
+        SELECT g.*, ug.added_at
+        FROM Games g
+        INNER JOIN UserGames ug ON g.game_id = ug.game_id
+        WHERE ug.user_id = ?
+        ORDER BY ug.added_at DESC
+    ");
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll();
+}
+
+// ====================
+// Schedule Management Functions
+// ====================
+
+// Add schedule
+function addSchedule($userId, $gameId, $date, $time, $friends) {
+    $pdo = getDBConnection();
+
+    // Validate game exists
+    if (!getGameById($gameId)) {
+        throw new Exception("Invalid game selected");
+    }
+
+    // Validate date/time
+    $scheduleDateTime = strtotime("$date $time");
+    if ($scheduleDateTime === false || $scheduleDateTime <= time()) {
+        throw new Exception("Schedule must be in the future");
+    }
+
+    // Insert schedule
+    $stmt = $pdo->prepare("INSERT INTO Schedules (user_id, game_id, date, time, friends) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$userId, $gameId, $date, $time, $friends]);
+
+    $scheduleId = $pdo->lastInsertId();
+
+    logActivity($userId, 'schedule_create', "Created schedule ID: $scheduleId");
+
+    return $scheduleId;
+}
+
+// Update schedule
+function updateSchedule($scheduleId, $userId, $gameId, $date, $time, $friends) {
+    $pdo = getDBConnection();
+
+    // Check ownership
+    $stmt = $pdo->prepare("SELECT schedule_id FROM Schedules WHERE schedule_id = ? AND user_id = ?");
+    $stmt->execute([$scheduleId, $userId]);
+    if (!$stmt->fetch()) {
+        throw new Exception("Schedule not found or access denied");
+    }
+
+    // Validate game exists
+    if (!getGameById($gameId)) {
+        throw new Exception("Invalid game selected");
+    }
+
+    // Validate date/time
+    $scheduleDateTime = strtotime("$date $time");
+    if ($scheduleDateTime === false || $scheduleDateTime <= time()) {
+        throw new Exception("Schedule must be in the future");
+    }
+
+    // Update schedule
+    $stmt = $pdo->prepare("UPDATE Schedules SET game_id = ?, date = ?, time = ?, friends = ? WHERE schedule_id = ? AND user_id = ?");
+    $stmt->execute([$gameId, $date, $time, $friends, $scheduleId, $userId]);
+
+    logActivity($userId, 'schedule_update', "Updated schedule ID: $scheduleId");
+}
+
+// Delete schedule
+function deleteSchedule($scheduleId, $userId) {
+    $pdo = getDBConnection();
+
+    // Check ownership
+    $stmt = $pdo->prepare("SELECT schedule_id FROM Schedules WHERE schedule_id = ? AND user_id = ?");
+    $stmt->execute([$scheduleId, $userId]);
+    if (!$stmt->fetch()) {
+        throw new Exception("Schedule not found or access denied");
+    }
+
+    // Delete schedule
+    $stmt = $pdo->prepare("DELETE FROM Schedules WHERE schedule_id = ? AND user_id = ?");
+    $stmt->execute([$scheduleId, $userId]);
+
+    logActivity($userId, 'schedule_delete', "Deleted schedule ID: $scheduleId");
+}
+
+// Get schedules
+function getSchedules($userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("
+        SELECT s.*, g.titel as game_title, g.genre, g.platform
+        FROM Schedules s
+        INNER JOIN Games g ON s.game_id = g.game_id
+        WHERE s.user_id = ?
+        ORDER BY s.date ASC, s.time ASC
+    ");
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll();
+}
+
+// Get schedule by ID
+function getScheduleById($scheduleId, $userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("
+        SELECT s.*, g.titel as game_title, g.genre, g.platform
+        FROM Schedules s
+        INNER JOIN Games g ON s.game_id = g.game_id
+        WHERE s.schedule_id = ? AND s.user_id = ?
+    ");
+    $stmt->execute([$scheduleId, $userId]);
+    return $stmt->fetch();
+}
+
+// ====================
+// Event Management Functions
+// ====================
+
+// Add event
+function addEvent($userId, $title, $date, $time, $description, $reminder, $sharedFriends, $scheduleId = null) {
+    $pdo = getDBConnection();
+
+    // Validate date/time
+    $eventDateTime = strtotime("$date $time");
+    if ($eventDateTime === false || $eventDateTime <= time()) {
+        throw new Exception("Event must be in the future");
+    }
+
+    // Insert event
+    $stmt = $pdo->prepare("INSERT INTO Events (user_id, title, date, time, description, reminder, schedule_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$userId, $title, $date, $time, $description, $reminder, $scheduleId]);
+
+    $eventId = $pdo->lastInsertId();
+
+    // Add shared friends
+    if (!empty($sharedFriends) && is_array($sharedFriends)) {
+        $sharedUsernames = [];
+        foreach ($sharedFriends as $friendId) {
+            // Verify friendship
+            $stmt = $pdo->prepare("SELECT friend_id FROM Friends WHERE (user_id = ? AND friend_user_id = ?) OR (user_id = ? AND friend_user_id = ?)");
+            $stmt->execute([$userId, $friendId, $friendId, $userId]);
+            if ($stmt->fetch()) {
+                $stmt = $pdo->prepare("INSERT INTO EventUserMap (event_id, friend_id) VALUES (?, ?)");
+                $stmt->execute([$eventId, $friendId]);
+
+                // Get username for logging
+                $stmt = $pdo->prepare("SELECT username FROM Users WHERE user_id = ?");
+                $stmt->execute([$friendId]);
+                $friend = $stmt->fetch();
+                if ($friend) {
+                    $sharedUsernames[] = $friend['username'];
+                }
+            }
         }
-        
-        $where_sql = 'WHERE ' . implode(' AND ', $where_conditions);
-        
-        // Sort validation
-        $valid_sorts = ['date', 'title', 'type', 'participants'];
-        $sort_by = in_array($sort_by, $valid_sorts) ? $sort_by : 'date';
-        $sort_order = in_array($sort_order, ['ASC', 'DESC']) ? $sort_order : 'ASC';
-        
-        $sort_mapping = [
-            'date' => 'e.date, e.time',
-            'title' => 'e.title',
-            'type' => 'e.event_type, e.title',
-            'participants' => 'participant_count, e.title'
-        ];
-        
-        $order_by = $sort_mapping[$sort_by] . ' ' . $sort_order;
-        
-        $sql = "
-            SELECT e.*, 
-                   COUNT(DISTINCT eum.friend_id) as participant_count,
-                   s.game_id, g.titel as linked_game_title
-            FROM Events e
-            LEFT JOIN EventUserMap eum ON e.event_id = eum.event_id
-            LEFT JOIN Schedules s ON e.schedule_id = s.schedule_id
-            LEFT JOIN Games g ON s.game_id = g.game_id
-            {$where_sql}
-            GROUP BY e.event_id
-            ORDER BY {$order_by}
-            LIMIT 100
-        ";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $events = $stmt->fetchAll();
-        
-        // Get shared friends for each event
-        foreach ($events as &$event) {
-            $stmt = $pdo->prepare("
-                SELECT u.user_id, u.username 
-                FROM EventUserMap eum 
-                JOIN Users u ON eum.friend_id = u.user_id 
-                WHERE eum.event_id = ?
-            ");
-            $stmt->execute([$event['event_id']]);
-            $event['shared_with'] = $stmt->fetchAll();
+    }
+
+    logActivity($userId, 'event_create', "Created event: $title" . (!empty($sharedUsernames) ? " (shared with: " . implode(', ', $sharedUsernames) . ")" : ""));
+
+    return $eventId;
+}
+
+// Update event
+function updateEvent($eventId, $userId, $title, $date, $time, $description, $reminder, $sharedFriends, $scheduleId = null) {
+    $pdo = getDBConnection();
+
+    // Check ownership
+    $stmt = $pdo->prepare("SELECT event_id FROM Events WHERE event_id = ? AND user_id = ?");
+    $stmt->execute([$eventId, $userId]);
+    if (!$stmt->fetch()) {
+        throw new Exception("Event not found or access denied");
+    }
+
+    // Validate date/time
+    $eventDateTime = strtotime("$date $time");
+    if ($eventDateTime === false || $eventDateTime <= time()) {
+        throw new Exception("Event must be in the future");
+    }
+
+    // Update event
+    $stmt = $pdo->prepare("UPDATE Events SET title = ?, date = ?, time = ?, description = ?, reminder = ?, schedule_id = ? WHERE event_id = ? AND user_id = ?");
+    $stmt->execute([$title, $date, $time, $description, $reminder, $scheduleId, $eventId, $userId]);
+
+    // Update shared friends
+    $stmt = $pdo->prepare("DELETE FROM EventUserMap WHERE event_id = ?");
+    $stmt->execute([$eventId]);
+
+    if (!empty($sharedFriends) && is_array($sharedFriends)) {
+        foreach ($sharedFriends as $friendId) {
+            // Verify friendship
+            $stmt = $pdo->prepare("SELECT friend_id FROM Friends WHERE (user_id = ? AND friend_user_id = ?) OR (user_id = ? AND friend_user_id = ?)");
+            $stmt->execute([$userId, $friendId, $friendId, $userId]);
+            if ($stmt->fetch()) {
+                $stmt = $pdo->prepare("INSERT INTO EventUserMap (event_id, friend_id) VALUES (?, ?)");
+                $stmt->execute([$eventId, $friendId]);
+            }
         }
-        
-        return $events;
-        
-    } catch (Exception $e) {
-        error_log("Error getting events with filtering: " . $e->getMessage());
-        return [];
+    }
+
+    logActivity($userId, 'event_update', "Updated event ID: $eventId");
+}
+
+// Delete event
+function deleteEvent($eventId, $userId) {
+    $pdo = getDBConnection();
+
+    // Check ownership
+    $stmt = $pdo->prepare("SELECT event_id FROM Events WHERE event_id = ? AND user_id = ?");
+    $stmt->execute([$eventId, $userId]);
+    if (!$stmt->fetch()) {
+        throw new Exception("Event not found or access denied");
+    }
+
+    // Delete event (cascade will handle EventUserMap)
+    $stmt = $pdo->prepare("DELETE FROM Events WHERE event_id = ? AND user_id = ?");
+    $stmt->execute([$eventId, $userId]);
+
+    logActivity($userId, 'event_delete', "Deleted event ID: $eventId");
+}
+
+// Get events
+function getEvents($userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("
+        SELECT e.*,
+               GROUP_CONCAT(u.username SEPARATOR ',') as shared_with,
+               g.titel as game_title
+        FROM Events e
+        LEFT JOIN EventUserMap eum ON e.event_id = eum.event_id
+        LEFT JOIN Users u ON eum.friend_id = u.user_id
+        LEFT JOIN Schedules s ON e.schedule_id = s.schedule_id
+        LEFT JOIN Games g ON s.game_id = g.game_id
+        WHERE e.user_id = ?
+        GROUP BY e.event_id
+        ORDER BY e.date ASC, e.time ASC
+    ");
+    $stmt->execute([$userId]);
+    return $stmt->fetchAll();
+}
+
+// Get event by ID
+function getEventById($eventId, $userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("
+        SELECT e.*,
+               GROUP_CONCAT(u.username SEPARATOR ',') as shared_with,
+               g.titel as game_title
+        FROM Events e
+        LEFT JOIN EventUserMap eum ON e.event_id = eum.event_id
+        LEFT JOIN Users u ON eum.friend_id = u.user_id
+        LEFT JOIN Schedules s ON e.schedule_id = s.schedule_id
+        LEFT JOIN Games g ON s.game_id = g.game_id
+        WHERE e.event_id = ? AND e.user_id = ?
+        GROUP BY e.event_id
+    ");
+    $stmt->execute([$eventId, $userId]);
+    return $stmt->fetch();
+}
+
+// ====================
+// Security Functions
+// ====================
+
+// Log failed login attempt
+function logFailedLogin($identifier) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("INSERT INTO login_attempts (identifier) VALUES (?)");
+    $stmt->execute([$identifier]);
+}
+
+// Check if login is locked
+function isLoginLocked($identifier) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as attempts
+        FROM login_attempts
+        WHERE identifier = ? AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)
+    ");
+    $stmt->execute([$identifier, LOGIN_LOCKOUT_TIME]);
+    $result = $stmt->fetch();
+
+    return $result['attempts'] >= MAX_LOGIN_ATTEMPTS;
+}
+
+// Clear failed login attempts
+function clearFailedLogins($identifier) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("DELETE FROM login_attempts WHERE identifier = ?");
+    $stmt->execute([$identifier]);
+}
+
+// ====================
+// Activity Logging
+// ====================
+
+// Log user activity
+function logActivity($userId, $action, $details = '') {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("INSERT INTO activity_log (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$userId, $action, $details, $_SERVER['REMOTE_ADDR'] ?? '']);
+}
+
+// ====================
+// Statistics Functions
+// ====================
+
+// Get friends count
+function getFriendsCount($userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as count
+        FROM Friends
+        WHERE user_id = ? OR friend_user_id = ?
+    ");
+    $stmt->execute([$userId, $userId]);
+    $result = $stmt->fetch();
+    return $result['count'];
+}
+
+// Get schedules count
+function getSchedulesCount($userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM Schedules WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $result = $stmt->fetch();
+    return $result['count'];
+}
+
+// Get events count
+function getEventsCount($userId) {
+    $pdo = getDBConnection();
+    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM Events WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $result = $stmt->fetch();
+    return $result['count'];
+}
+
+// ====================
+// Utility Functions
+// ====================
+
+// Sanitize output
+function sanitize($data) {
+    if (is_array($data)) {
+        return array_map('sanitize', $data);
+    }
+    return htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
+}
+
+// Generate CSRF token
+function generateCSRFToken() {
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+// Verify CSRF token
+function verifyCSRFToken($token) {
+    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+}
+
+// Get client IP address
+function getClientIP() {
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        return $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        return $_SERVER['HTTP_X_FORWARDED_FOR'];
+    } else {
+        return $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
     }
 }
 
-/**
- * Get user event statistics
- */
-function getUserEventStatistics($user_id) {
-    global $pdo;
-    
-    try {
-        $stmt = $pdo->prepare("
-            SELECT 
-                COUNT(*) as total_events,
-                COUNT(CASE WHEN e.date >= CURDATE() THEN 1 END) as upcoming_events,
-                COUNT(CASE WHEN e.date < CURDATE() THEN 1 END) as past_events,
-                COUNT(CASE WHEN eum.friend_id IS NOT NULL THEN 1 END) as shared_events
-            FROM Events e
-            LEFT JOIN EventUserMap eum ON e.event_id = eum.event_id
-            WHERE e.user_id = :user_id
-        ");
-        
-        $stmt->execute([':user_id' => $user_id]);
-        $stats = $stmt->fetch();
-        
-        return $stats ?: [
-            'total_events' => 0,
-            'upcoming_events' => 0, 
-            'past_events' => 0,
-            'shared_events' => 0
-        ];
-        
-    } catch (Exception $e) {
-        error_log("Error getting event statistics: " . $e->getMessage());
-        return ['total_events' => 0, 'upcoming_events' => 0, 'past_events' => 0, 'shared_events' => 0];
-    }
-}
+// Initialize session on include
+initSession();
 ?>

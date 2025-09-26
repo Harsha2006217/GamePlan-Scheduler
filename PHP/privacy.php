@@ -1,385 +1,247 @@
+<?php
+// GamePlan Scheduler - Privacy Policy
+// Professional privacy policy page with GDPR compliance
+
+require_once 'functions.php';
+?>
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacybeleid - GamePlan Scheduler</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>GamePlan Scheduler - Privacy Policy</title>
     <link rel="stylesheet" href="../CSS/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="bg-dark text-light">
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <div class="card bg-secondary">
-                    <div class="card-header bg-primary text-white">
-                        <h2 class="mb-0">
-                            <i class="fas fa-shield-alt me-3"></i>
-                            Privacybeleid GamePlan Scheduler
-                        </h2>
-                        <small class="opacity-75">Laatst bijgewerkt: 30 september 2025</small>
-                    </div>
-                    
-                    <div class="card-body p-4">
-                        <!-- Introduction -->
-                        <div class="mb-4">
-                            <h4 class="text-primary">
-                                <i class="fas fa-info-circle me-2"></i>Inleiding
-                            </h4>
-                            <p class="lead">
-                                Bij GamePlan Scheduler respecteren we je privacy en zijn we transparant over hoe we 
-                                je gegevens verzamelen, gebruiken en beschermen. Dit privacybeleid legt uit welke 
-                                informatie we verzamelen en hoe we ermee omgaan.
-                            </p>
-                        </div>
+<body>
+    <header>
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="index.php" class="logo">
+                    <i class="fas fa-gamepad"></i> GamePlan Scheduler
+                </a>
+                <nav>
+                    <ul class="d-flex">
+                        <?php if (isLoggedIn()): ?>
+                            <li><a href="index.php">Dashboard</a></li>
+                            <li><a href="profile.php">Profile</a></li>
+                            <li><a href="friends.php">Friends</a></li>
+                            <li><a href="schedules.php">Schedules</a></li>
+                            <li><a href="events.php">Events</a></li>
+                            <li><a href="?logout=1">Logout</a></li>
+                        <?php else: ?>
+                            <li><a href="login.php">Login</a></li>
+                            <li><a href="register.php">Register</a></li>
+                        <?php endif; ?>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
 
-                        <!-- Data Collection -->
-                        <div class="mb-4">
-                            <h4 class="text-success">
-                                <i class="fas fa-database me-2"></i>Welke Gegevens Verzamelen We?
-                            </h4>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h5 class="text-info">Accountgegevens</h5>
-                                    <ul class="list-unstyled">
-                                        <li><i class="fas fa-check text-success me-2"></i>Username</li>
-                                        <li><i class="fas fa-check text-success me-2"></i>Email adres</li>
-                                        <li><i class="fas fa-check text-success me-2"></i>Wachtwoord (versleuteld)</li>
-                                        <li><i class="fas fa-check text-success me-2"></i>Laatste activiteit</li>
-                                    </ul>
-                                </div>
-                                <div class="col-md-6">
-                                    <h5 class="text-info">Gaming Gegevens</h5>
-                                    <ul class="list-unstyled">
-                                        <li><i class="fas fa-gamepad text-primary me-2"></i>Favoriete games</li>
-                                        <li><i class="fas fa-calendar text-primary me-2"></i>Gaming schema's</li>
-                                        <li><i class="fas fa-trophy text-primary me-2"></i>Evenementen</li>
-                                        <li><i class="fas fa-users text-primary me-2"></i>Vriendenlijst</li>
-                                    </ul>
-                                </div>
-                            </div>
+    <main>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card">
+                        <div class="card-header">
+                            <h1 class="mb-0"><i class="fas fa-shield-alt"></i> Privacy Policy</h1>
+                            <p class="text-muted mb-0 mt-2">Last updated: <?php echo date('F j, Y'); ?></p>
                         </div>
-
-                        <!-- Data Usage -->
-                        <div class="mb-4">
-                            <h4 class="text-warning">
-                                <i class="fas fa-cogs me-2"></i>Hoe Gebruiken We Je Gegevens?
-                            </h4>
+                        <div class="card-body">
                             <div class="alert alert-info">
-                                <h6><i class="fas fa-star me-2"></i>We gebruiken je gegevens alleen voor:</h6>
-                                <ul class="mb-0">
-                                    <li>Het leveren van onze gaming planningsservice</li>
-                                    <li>Het mogelijk maken van sociale functies (vrienden, delen)</li>
-                                    <li>Het versturen van herinneringen voor je gaming sessies</li>
-                                    <li>Het verbeteren van onze service op basis van gebruikspatronen</li>
-                                    <li>Het beveiligen van je account tegen misbruik</li>
-                                </ul>
+                                <i class="fas fa-info-circle"></i>
+                                <strong>GDPR Compliant:</strong> We are committed to protecting your privacy and complying with data protection regulations.
                             </div>
-                        </div>
 
-                        <!-- Data Security -->
-                        <div class="mb-4">
-                            <h4 class="text-danger">
-                                <i class="fas fa-lock me-2"></i>Hoe Beschermen We Je Gegevens?
-                            </h4>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <div class="card bg-dark text-center h-100">
-                                        <div class="card-body">
-                                            <i class="fas fa-key fa-3x text-primary mb-3"></i>
-                                            <h6>Wachtwoord Versleuteling</h6>
-                                            <small class="text-muted">Argon2ID hashing voor maximale beveiliging</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <div class="card bg-dark text-center h-100">
-                                        <div class="card-body">
-                                            <i class="fas fa-database fa-3x text-success mb-3"></i>
-                                            <h6>Veilige Database</h6>
-                                            <small class="text-muted">MySQL met prepared statements tegen SQL injectie</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <div class="card bg-dark text-center h-100">
-                                        <div class="card-body">
-                                            <i class="fas fa-shield-alt fa-3x text-warning mb-3"></i>
-                                            <h6>HTTPS Verbinding</h6>
-                                            <small class="text-muted">Alle data wordt versleuteld verstuurd</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            <h2>1. Introduction</h2>
+                            <p>Welcome to GamePlan Scheduler ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.</p>
 
-                        <!-- Data Sharing -->
-                        <div class="mb-4">
-                            <h4 class="text-info">
-                                <i class="fas fa-share-alt me-2"></i>Delen We Je Gegevens?
-                            </h4>
-                            <div class="alert alert-success">
-                                <h5><i class="fas fa-times-circle me-2"></i>NEE! We delen je gegevens NOOIT met:</h5>
-                                <ul class="mb-0">
-                                    <li>Adverteerders of marketingbedrijven</li>
-                                    <li>Sociale media platforms</li>
-                                    <li>Data brokers of andere commerciële partijen</li>
-                                    <li>Overheidsinstanties (tenzij wettelijk verplicht)</li>
-                                </ul>
-                            </div>
-                            
-                            <div class="alert alert-warning">
-                                <h6><i class="fas fa-users me-2"></i>Binnen de app delen vrienden alleen:</h6>
-                                <ul class="mb-0">
-                                    <li>Je username (zoals je hebt ingesteld)</li>
-                                    <li>Je online status (als je actief bent)</li>
-                                    <li>Gaming schema's die je expliciet deelt</li>
-                                    <li>Evenementen waar je vrienden voor uitnodigt</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- User Rights -->
-                        <div class="mb-4">
-                            <h4 class="text-primary">
-                                <i class="fas fa-user-shield me-2"></i>Jouw Rechten (AVG Compliant)
-                            </h4>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="card bg-dark mb-3">
-                                        <div class="card-body">
-                                            <h6><i class="fas fa-eye text-info me-2"></i>Recht op Inzage</h6>
-                                            <p class="small mb-0">Je kunt altijd vragen welke gegevens we van je hebben</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="card bg-dark mb-3">
-                                        <div class="card-body">
-                                            <h6><i class="fas fa-edit text-warning me-2"></i>Recht op Correctie</h6>
-                                            <p class="small mb-0">Je kunt verkeerde gegevens laten corrigeren</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="card bg-dark mb-3">
-                                        <div class="card-body">
-                                            <h6><i class="fas fa-trash text-danger me-2"></i>Recht op Verwijdering</h6>
-                                            <p class="small mb-0">Je kunt je account en alle gegevens volledig laten verwijderen</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="card bg-dark mb-3">
-                                        <div class="card-body">
-                                            <h6><i class="fas fa-download text-success me-2"></i>Recht op Overdraagbaarheid</h6>
-                                            <p class="small mb-0">Je kunt een kopie van je gegevens opvragen</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Cookies -->
-                        <div class="mb-4">
-                            <h4 class="text-secondary">
-                                <i class="fas fa-cookie-bite me-2"></i>Cookies & Sessies
-                            </h4>
-                            <p>We gebruiken alleen essentiële cookies voor:</p>
+                            <h2>2. Information We Collect</h2>
+                            <h3>Personal Information</h3>
                             <ul>
-                                <li><strong>Sessie cookies:</strong> Om je ingelogd te houden tijdens je bezoek</li>
-                                <li><strong>Veiligheid cookies:</strong> Voor CSRF bescherming en beveiligde login</li>
-                                <li><strong>Onthoud me cookies:</strong> Als je ervoor kiest om ingelogd te blijven</li>
+                                <li><strong>Account Information:</strong> Username, email address, password (encrypted)</li>
+                                <li><strong>Profile Information:</strong> First name, last name, bio, avatar (optional)</li>
+                                <li><strong>Gaming Preferences:</strong> Favorite games, gaming schedules, events</li>
                             </ul>
-                            <p class="text-muted small">
-                                <i class="fas fa-info-circle me-1"></i>
-                                We gebruiken GEEN tracking cookies, analytics cookies of advertentie cookies.
-                            </p>
-                        </div>
 
-                        <!-- Data Retention -->
-                        <div class="mb-4">
-                            <h4 class="text-info">
-                                <i class="fas fa-clock me-2"></i>Hoe Lang Bewaren We Gegevens?
-                            </h4>
-                            <div class="table-responsive">
-                                <table class="table table-dark table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Type Gegevens</th>
-                                            <th>Bewaartermijn</th>
-                                            <th>Reden</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>Accountgegevens</td>
-                                            <td>Tot account verwijdering</td>
-                                            <td>Nodig voor app functionaliteit</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Gaming schema's</td>
-                                            <td>Tot je ze verwijdert</td>
-                                            <td>Jouw persoonlijke planning</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Login logs</td>
-                                            <td>30 dagen</td>
-                                            <td>Beveiliging en misbruik preventie</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Inactieve accounts</td>
-                                            <td>2 jaar zonder login</td>
-                                            <td>Database opschoning</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                            <h3>Usage Information</h3>
+                            <ul>
+                                <li><strong>Activity Logs:</strong> Login times, actions performed, IP addresses</li>
+                                <li><strong>Technical Data:</strong> Browser type, device information, cookies</li>
+                                <li><strong>Communication Data:</strong> Messages between friends, event notifications</li>
+                            </ul>
 
-                        <!-- Contact -->
-                        <div class="mb-4">
-                            <h4 class="text-success">
-                                <i class="fas fa-envelope me-2"></i>Contact & Vragen
-                            </h4>
-                            <div class="alert alert-primary">
-                                <p class="mb-2">Heb je vragen over je privacy of wil je gebruik maken van je rechten?</p>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <p class="mb-1"><strong>Email:</strong> privacy@gameplan.com</p>
-                                        <p class="mb-1"><strong>Developer:</strong> Harsha Kanaparthi</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <p class="mb-1"><strong>Reactietijd:</strong> Binnen 72 uur</p>
-                                        <p class="mb-1"><strong>Taal:</strong> Nederlands & Engels</p>
-                                    </div>
+                            <h2>3. How We Use Your Information</h2>
+                            <p>We use your personal data to:</p>
+                            <ul>
+                                <li>Provide and maintain our gaming scheduling service</li>
+                                <li>Create and manage your user account</li>
+                                <li>Facilitate connections with friends and gaming communities</li>
+                                <li>Send important notifications about your schedules and events</li>
+                                <li>Improve our services and develop new features</li>
+                                <li>Ensure security and prevent fraud</li>
+                                <li>Comply with legal obligations</li>
+                            </ul>
+
+                            <h2>4. Information Sharing and Disclosure</h2>
+                            <p>We do not sell, trade, or otherwise transfer your personal information to third parties except in the following circumstances:</p>
+
+                            <h3>With Your Consent</h3>
+                            <ul>
+                                <li>When you share events or schedules with friends</li>
+                                <li>When you participate in public gaming communities</li>
+                            </ul>
+
+                            <h3>Service Providers</h3>
+                            <ul>
+                                <li>Web hosting and database services (encrypted and secure)</li>
+                                <li>Email delivery services for notifications</li>
+                                <li>Analytics services (anonymized data only)</li>
+                            </ul>
+
+                            <h3>Legal Requirements</h3>
+                            <ul>
+                                <li>To comply with applicable laws and regulations</li>
+                                <li>To protect our rights and prevent fraud</li>
+                                <li>In response to legal requests from authorities</li>
+                            </ul>
+
+                            <h2>5. Data Security</h2>
+                            <p>We implement appropriate technical and organizational measures to ensure a level of security appropriate to the risk, including:</p>
+                            <ul>
+                                <li><strong>Encryption:</strong> All passwords are hashed using Argon2ID</li>
+                                <li><strong>Secure Connections:</strong> All data transmission uses HTTPS</li>
+                                <li><strong>Access Controls:</strong> Limited access to personal data on a need-to-know basis</li>
+                                <li><strong>Regular Audits:</strong> Security monitoring and regular vulnerability assessments</li>
+                                <li><strong>Data Minimization:</strong> We only collect and retain necessary data</li>
+                            </ul>
+
+                            <h2>6. Data Retention</h2>
+                            <p>We retain your personal data for as long as necessary to provide our services and comply with legal obligations:</p>
+                            <ul>
+                                <li><strong>Active Accounts:</strong> Data retained while your account is active</li>
+                                <li><strong>Inactive Accounts:</strong> Data retained for 2 years after account deactivation</li>
+                                <li><strong>Legal Requirements:</strong> Some data may be retained longer if required by law</li>
+                                <li><strong>Activity Logs:</strong> Security logs retained for 1 year</li>
+                            </ul>
+
+                            <h2>7. Your Rights</h2>
+                            <p>Under GDPR and other privacy laws, you have the following rights:</p>
+
+                            <h3>Access Rights</h3>
+                            <ul>
+                                <li><strong>Right to Access:</strong> Request a copy of your personal data</li>
+                                <li><strong>Right to Rectification:</strong> Correct inaccurate or incomplete data</li>
+                                <li><strong>Right to Erasure:</strong> Request deletion of your personal data</li>
+                            </ul>
+
+                            <h3>Control Rights</h3>
+                            <ul>
+                                <li><strong>Right to Restriction:</strong> Limit how we process your data</li>
+                                <li><strong>Right to Object:</strong> Object to processing based on legitimate interests</li>
+                                <li><strong>Right to Portability:</strong> Receive your data in a structured format</li>
+                            </ul>
+
+                            <h3>Communication Rights</h3>
+                            <ul>
+                                <li><strong>Right to Withdraw Consent:</strong> Withdraw consent for processing</li>
+                                <li><strong>Right to Complain:</strong> Lodge a complaint with supervisory authorities</li>
+                            </ul>
+
+                            <h2>8. Cookies and Tracking</h2>
+                            <p>We use cookies and similar technologies to enhance your experience:</p>
+
+                            <h3>Essential Cookies</h3>
+                            <ul>
+                                <li>Session management and authentication</li>
+                                <li>Security and fraud prevention</li>
+                                <li>Remembering your preferences</li>
+                            </ul>
+
+                            <h3>Analytics Cookies</h3>
+                            <ul>
+                                <li>Understanding how you use our service</li>
+                                <li>Improving website performance</li>
+                                <li>Anonymous usage statistics</li>
+                            </ul>
+
+                            <p>You can control cookie settings through your browser preferences.</p>
+
+                            <h2>9. Third-Party Services</h2>
+                            <p>Our service may contain links to third-party websites or integrate with third-party services:</p>
+                            <ul>
+                                <li><strong>Social Features:</strong> Friend connections and sharing</li>
+                                <li><strong>External Links:</strong> Links to gaming communities or resources</li>
+                                <li><strong>APIs:</strong> Integration with gaming platforms (future feature)</li>
+                            </ul>
+
+                            <p>We are not responsible for the privacy practices of third-party services.</p>
+
+                            <h2>10. Children's Privacy</h2>
+                            <p>Our service is designed for young gamers aged 13 and above. We do not knowingly collect personal information from children under 13. If we become aware that we have collected personal information from a child under 13, we will take steps to delete such information.</p>
+
+                            <h2>11. International Data Transfers</h2>
+                            <p>Your data may be transferred to and processed in countries other than your own. We ensure appropriate safeguards are in place to protect your data during international transfers, including:</p>
+                            <ul>
+                                <li>Adequacy decisions by relevant authorities</li>
+                                <li>Standard contractual clauses</li>
+                                <li>Binding corporate rules</li>
+                                <li>Certification schemes</li>
+                            </ul>
+
+                            <h2>12. Changes to This Policy</h2>
+                            <p>We may update this privacy policy from time to time. We will notify you of any changes by:</p>
+                            <ul>
+                                <li>Posting the new policy on this page</li>
+                                <li>Sending you an email notification</li>
+                                <li>Displaying a notice on our website</li>
+                            </ul>
+
+                            <p>Your continued use of our service after changes constitutes acceptance of the updated policy.</p>
+
+                            <h2>13. Contact Us</h2>
+                            <p>If you have any questions about this privacy policy or our data practices, please contact us:</p>
+
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5>GamePlan Scheduler Privacy Team</h5>
+                                    <p class="mb-1"><strong>Email:</strong> privacy@gameplan-scheduler.com</p>
+                                    <p class="mb-1"><strong>Address:</strong> [Your Business Address]</p>
+                                    <p class="mb-0"><strong>Response Time:</strong> We aim to respond within 30 days</p>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Changes -->
-                        <div class="mb-4">
-                            <h4 class="text-warning">
-                                <i class="fas fa-history me-2"></i>Wijzigingen in Dit Beleid
-                            </h4>
-                            <p>
-                                We kunnen dit privacybeleid van tijd tot tijd bijwerken. Als we belangrijke wijzigingen 
-                                aanbrengen, laten we je dit weten via:
-                            </p>
-                            <ul>
-                                <li>Een melding in de app bij je volgende login</li>
-                                <li>Een email naar je geregistreerde adres (bij grote wijzigingen)</li>
-                                <li>Een updatenotificatie op deze pagina</li>
-                            </ul>
-                        </div>
+                            <h2>14. Data Protection Officer</h2>
+                            <p>For GDPR-related inquiries, you can contact our Data Protection Officer:</p>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <p class="mb-1"><strong>Name:</strong> [DPO Name]</p>
+                                    <p class="mb-0"><strong>Email:</strong> dpo@gameplan-scheduler.com</p>
+                                </div>
+                            </div>
 
-                        <!-- Footer -->
-                        <div class="text-center pt-4 border-top">
-                            <p class="text-muted">
-                                <i class="fas fa-heart text-danger me-2"></i>
-                                Gemaakt met liefde voor gaming door Harsha Kanaparthi
-                            </p>
-                            <div class="d-flex justify-content-center gap-3">
-                                <a href="index.php" class="btn btn-primary">
-                                    <i class="fas fa-home me-2"></i>Terug naar Dashboard
-                                </a>
-                                <a href="contact.php" class="btn btn-outline-light">
-                                    <i class="fas fa-question-circle me-2"></i>Vragen?
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Quick Navigation -->
-                <div class="card bg-dark mt-4">
-                    <div class="card-body">
-                        <h6 class="text-primary mb-3">
-                            <i class="fas fa-map me-2"></i>Snelle Navigatie
-                        </h6>
-                        <div class="row">
-                            <div class="col-md-3">
-                                <a href="#" onclick="scrollToSection('data-collection')" class="text-decoration-none">
-                                    <i class="fas fa-database me-1"></i>Gegevensverzameling
-                                </a>
-                            </div>
-                            <div class="col-md-3">
-                                <a href="#" onclick="scrollToSection('data-security')" class="text-decoration-none">
-                                    <i class="fas fa-lock me-1"></i>Beveiliging
-                                </a>
-                            </div>
-                            <div class="col-md-3">
-                                <a href="#" onclick="scrollToSection('user-rights')" class="text-decoration-none">
-                                    <i class="fas fa-user-shield me-1"></i>Jouw Rechten
-                                </a>
-                            </div>
-                            <div class="col-md-3">
-                                <a href="#" onclick="scrollToSection('contact')" class="text-decoration-none">
-                                    <i class="fas fa-envelope me-1"></i>Contact
-                                </a>
+                            <hr class="my-4">
+
+                            <div class="text-center text-muted">
+                                <p class="mb-0">This privacy policy was last updated on <?php echo date('F j, Y'); ?>.</p>
+                                <p>If you have any concerns about your privacy, please don't hesitate to contact us.</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <footer class="bg-dark text-white text-center p-3 mt-5">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <h6><i class="fas fa-gamepad me-2"></i>GamePlan Scheduler</h6>
-                    <small>Je gaming planning platform</small>
-                </div>
-                <div class="col-md-4">
-                    <h6><i class="fas fa-shield-alt me-2"></i>Privacy</h6>
-                    <small>AVG compliant sinds 2025</small>
-                </div>
-                <div class="col-md-4">
-                    <h6><i class="fas fa-code me-2"></i>Ontwikkeld door</h6>
-                    <small>Harsha Kanaparthi</small>
-                </div>
-            </div>
-            <hr class="my-3">
-            <p class="mb-0">
-                © 2025 GamePlan Scheduler | 
-                <a href="terms.php" class="text-white text-decoration-none">Algemene Voorwaarden</a> | 
+    </main>
 
-            </p>
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 GamePlan Scheduler by Harsha Kanaparthi. All rights reserved.</p>
         </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Smooth scrolling for quick navigation
-        function scrollToSection(sectionId) {
-            const section = document.getElementById(sectionId);
-            if (section) {
-                section.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-        
-        // Add scroll-to-top button
-        document.addEventListener('DOMContentLoaded', function() {
-            const scrollButton = document.createElement('button');
-            scrollButton.innerHTML = '<i class="fas fa-arrow-up"></i>';
-            scrollButton.className = 'btn btn-primary position-fixed bottom-0 end-0 m-3';
-            scrollButton.style.zIndex = '1050';
-            scrollButton.style.display = 'none';
-            scrollButton.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-            
-            document.body.appendChild(scrollButton);
-            
-            window.addEventListener('scroll', function() {
-                if (window.scrollY > 300) {
-                    scrollButton.style.display = 'block';
-                } else {
-                    scrollButton.style.display = 'none';
-                }
-            });
-        });
-    </script>
+    <script src="../JS/script.js"></script>
 </body>
 </html>

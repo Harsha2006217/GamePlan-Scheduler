@@ -179,6 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $message .= '</ul></div>';
     }
 }
+?>
 <!DOCTYPE html>
 <html lang="nl">
 <head>
