@@ -14,19 +14,24 @@ session_start();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../CSS/style.css">
 </head>
-<body class="bg-dark text-white">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+<body>
+    <header class="bg-dark text-white p-3">
         <div class="container">
-            <a class="navbar-brand" href="index.php"><i class="fas fa-gamepad"></i> GamePlan</a>
-            <div class="navbar-nav ms-auto">
-                <a href="logout.php" class="btn btn-outline-light">Logout</a>
+            <div class="d-flex justify-content-between align-items-center">
+                <h1><i class="fas fa-shield-alt"></i> Privacy Policy</h1>
+                <nav>
+                    <a href="index.php" class="btn btn-outline-light">Home</a>
+                </nav>
             </div>
         </div>
-    </nav>
-    <div class="container mt-4">
+    </header>
+    <main class="container my-4">
         <h2>Privacy Policy</h2>
-        <p>We collect only necessary data for planning: usernames, emails, games, schedules, and events. Data is stored securely with encryption. You can delete your data anytime. No data is sold.</p>
-    </div>
+        <p>We collect only necessary data for planning: usernames, emails, games, schedules, events. Data is stored securely with hashing and not shared. You can delete your data anytime.</p>
+    </main>
+    <footer class="bg-dark text-white text-center p-3">
+        <p>&copy; 2025 GamePlan Scheduler by Harsha Kanaparthi.</p>
+    </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -1,19 +1,20 @@
 <?php
 session_start();
-require 'functions.php';
+require_once 'functions.php';
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
+    $username = $_POST['username'] ?? '';
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
-    if (strlen($username) <= 50 && validateInput($email, 'email') && strlen($password) >= 8) {
-        if (registerUser($username, $email, $password)) {
+    if (validateInput($username, 'text') && validateInput($email, 'email') && !empty($password)) {
+        try {
+            registerUser($username, $email, $password);
             $message = 'Registratie succesvol. Gelieve in te loggen.';
-        } else {
-            $message = 'Registratie mislukt. Email of gebruikersnaam bestaat mogelijk al.';
+        } catch (Exception $e) {
+            $message = 'Registratie mislukt.';
         }
     } else {
-        $message = 'Voer alstublieft geldige gegevens in.';
+        $message = 'Ongeldige invoer.';
     }
 }
 ?>
@@ -33,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if ($message): ?>
                 <div class="alert alert-info"><?php echo htmlspecialchars($message); ?></div>
             <?php endif; ?>
-            <form method="post">
+            <form method="post" onsubmit="return validateRegisterForm()">
                 <div class="mb-3">
                     <label for="username" class="form-label">Gebruikersnaam</label>
                     <input type="text" class="form-control" id="username" name="username" required maxlength="50">
@@ -44,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Wachtwoord</label>
-                    <input type="password" class="form-control" id="password" name="password" required minlength="8">
+                    <input type="password" class="form-control" id="password" name="password" required>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Registreren</button>
             </form>

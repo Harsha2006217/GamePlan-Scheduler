@@ -11,7 +11,8 @@
  * @since 2025-09-30
  */
 
-require 'functions.php';
+session_start();
+require_once 'functions.php';
 
 // Check if user is logged in before attempting logout
 if (!isLoggedIn()) {

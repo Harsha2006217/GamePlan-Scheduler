@@ -813,3 +813,78 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
+
+// GamePlan Scheduler Scripts
+
+// Login form validation
+function validateLoginForm() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    if (!email || !password) {
+        alert('Please fill in all fields.');
+        return false;
+    }
+    return true;
+}
+
+// Register form validation
+function validateRegisterForm() {
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    if (!username || !email || !password) {
+        alert('Please fill in all fields.');
+        return false;
+    }
+    if (username.length > 50) {
+        alert('Username too long.');
+        return false;
+    }
+    return true;
+}
+
+// Schedule form validation
+function validateScheduleForm() {
+    const game = document.getElementById('game_id').value;
+    const date = document.getElementById('date').value;
+    const time = document.getElementById('time').value;
+    if (!game) {
+        alert('Please select a game.');
+        return false;
+    }
+    if (!date || new Date(date) < new Date()) {
+        alert('Please select a future date.');
+        return false;
+    }
+    if (!time || !/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
+        alert('Please enter a valid time.');
+        return false;
+    }
+    return true;
+}
+
+// Event form validation
+function validateEventForm() {
+    const title = document.getElementById('title').value.trim();
+    const date = document.getElementById('date').value;
+    const time = document.getElementById('time').value;
+    if (!title || title.length > 100 || /^\s*$/.test(title)) {
+        alert('Title is required, max 100 chars, not only spaces.');
+        return false;
+    }
+    if (!date || new Date(date) < new Date()) {
+        alert('Please select a future date.');
+        return false;
+    }
+    if (!time || !/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
+        alert('Please enter a valid time.');
+        return false;
+    }
+    return true;
+}
+
+// Reminder pop-ups (simulate based on page load, in real app use server-side or WebSockets)
+document.addEventListener('DOMContentLoaded', function() {
+    // Example: Check for reminders (in real app, fetch from server)
+    // For demo, assume no reminders on load
+});

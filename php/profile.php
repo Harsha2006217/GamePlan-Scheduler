@@ -99,6 +99,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
         $error = 'Failed to change password. Please check your inputs.';
     }
 }
+
+// Handle adding favorite game
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['game_id'])) {
+    $gameId = $_POST['game_id'] ?? '';
+
+    if ($gameId) {
+        try {
+            addFavoriteGame($userId, $gameId);
+            $message = 'Favorite game added.';
+        } catch (Exception $e) {
+            $error = $e->getMessage();
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -290,6 +304,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
                                     <i class="fas fa-key"></i> Change Password
                                 </button>
                             </form>
+                        </div>
+                    </div>
+
+                    <!-- Add Favorite Game -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3><i class="fas fa-plus"></i> Add Favorite Game</h3>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="">
+                                <div class="mb-3">
+                                    <label for="game_id" class="form-label">Select Game</label>
+                                    <select class="form-select" id="game_id" name="game_id" required>
+                                        <option value="">Choose a game...</option>
+                                        <?php foreach ($games as $game): ?>
+                                            <option value="<?php echo $game['game_id']; ?>"><?php echo htmlspecialchars($game['titel']); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Add to Favorites
+                                </button>
+                            </form>
+
+                            <?php if (!empty($message)): ?>
+                                <div class="alert alert-success mt-3" role="alert">
+                                    <?php echo htmlspecialchars($message); ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

@@ -12,8 +12,6 @@ if (!isLoggedIn()) {
 }
 
 $userId = getCurrentUserId();
-$games = getGames();
-$friends = getFriends($userId);
 $message = '';
 
 // Handle form submission
@@ -23,28 +21,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $time = $_POST['time'] ?? '';
     $friendsSelected = $_POST['friends'] ?? [];
 
-    if (!empty($gameId) && validateInput($date, 'date') && validateInput($time, 'time') && strtotime($date) >= time()) {
-        $friendsStr = implode(', ', array_map(function($id) use ($friends) {
-            foreach ($friends as $f) if ($f['user_id'] == $id) return $f['username'];
-            return '';
-        }, $friendsSelected));
-
+    if (validateInput($date, 'date') && validateInput($time, 'time') && $gameId) {
         // Create schedule
-        $scheduleId = addSchedule($userId, $gameId, $date, $time, $friendsStr);
+        addSchedule($userId, $gameId, $date, $time, $friendsSelected);
 
-        if ($scheduleId) {
-            $_SESSION['message'] = 'Schedule created successfully!';
-            $_SESSION['message_type'] = 'success';
-
-            header('Location: schedules.php');
-            exit;
-        } else {
-            $message = 'Failed to add schedule.';
-        }
+        header('Location: schedules.php');
+        exit;
     } else {
         $message = 'Invalid input.';
     }
 }
+
+$games = getGames();
+$friends = getFriends($userId);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -70,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($message): ?>
             <div class="alert alert-danger"><?php echo htmlspecialchars($message); ?></div>
         <?php endif; ?>
-        <form method="post">
+        <form method="post" onsubmit="return validateScheduleForm()">
             <div class="mb-3">
                 <label for="game_id" class="form-label">Game</label>
                 <select class="form-control" id="game_id" name="game_id" required>
@@ -92,8 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label class="form-label">Friends</label>
                 <?php foreach ($friends as $friend): ?>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="friends[]" value="<?php echo $friend['user_id']; ?>" id="friend<?php echo $friend['user_id']; ?>">
-                        <label class="form-check-label" for="friend<?php echo $friend['user_id']; ?>">
+                        <input class="form-check-input" type="checkbox" name="friends[]" value="<?php echo $friend['user_id']; ?>" id="friend_<?php echo $friend['user_id']; ?>">
+                        <label class="form-check-label" for="friend_<?php echo $friend['user_id']; ?>">
                             <?php echo htmlspecialchars($friend['username']); ?>
                         </label>
                     </div>
@@ -102,6 +91,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="submit" class="btn btn-primary">Add Schedule</button>
         </form>
     </div>
+    <footer class="bg-dark text-white text-center p-3">
+        <p>&copy; 2025 GamePlan Scheduler by Harsha Kanaparthi.</p>
+    </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../JS/script.js"></script>
 </body>

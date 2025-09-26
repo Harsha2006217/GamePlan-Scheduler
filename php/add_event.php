@@ -1,31 +1,30 @@
 <?php
 session_start();
-require 'functions.php';
-if (!isset($_SESSION['user_id'])) {
+require_once 'functions.php';
+if (!isLoggedIn()) {
     header('Location: login.php');
     exit;
 }
-$user_id = $_SESSION['user_id'];
-$schedules = getSchedules($user_id);
-$friends = getFriends($user_id);
+$user_id = getCurrentUserId();
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = trim($_POST['title'] ?? '');
+    $title = $_POST['title'] ?? '';
     $date = $_POST['date'] ?? '';
     $time = $_POST['time'] ?? '';
-    $description = trim($_POST['description'] ?? '');
-    $reminder = $_POST['reminder'] ?? 'none';
-    $schedule_id = !empty($_POST['schedule_id']) ? (int)$_POST['schedule_id'] : null;
+    $description = $_POST['description'] ?? '';
+    $reminder = $_POST['reminder'] ?? 'geen';
+    $schedule_id = $_POST['schedule_id'] ?? null;
     $shared_friends = $_POST['shared_friends'] ?? [];
-    
-    if (addEvent($user_id, $title, $date, $time, $description, $reminder, $schedule_id, $shared_friends)) {
-        $_SESSION['success_message'] = 'Event added successfully!';
+    if (validateInput($title, 'text') && validateInput($date, 'date') && validateInput($time, 'time')) {
+        addEvent($user_id, $title, $date, $time, $description, $reminder, $schedule_id, $shared_friends);
         header('Location: events.php');
         exit;
     } else {
-        $message = 'Failed to add event. Please check your inputs.';
+        $message = 'Invalid input.';
     }
 }
+$schedules = getSchedules($user_id);
+$friends = getFriends($user_id);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -75,17 +74,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="mb-3">
                 <label for="reminder" class="form-label">Reminder</label>
                 <select class="form-control" id="reminder" name="reminder">
-                    <option value="none">No reminder</option>
-                    <option value="1hour">1 hour before</option>
-                    <option value="1day">1 day before</option>
+                    <option value="geen">None</option>
+                    <option value="1 uur ervoor">1 hour before</option>
+                    <option value="1 dag ervoor">1 day before</option>
                 </select>
             </div>
             <div class="mb-3">
-                <label for="schedule_id" class="form-label">Link to Schedule (optional)</label>
+                <label for="schedule_id" class="form-label">Link to Schedule (Optional)</label>
                 <select class="form-control" id="schedule_id" name="schedule_id">
                     <option value="">Select Schedule</option>
                     <?php foreach ($schedules as $schedule): ?>
-                        <option value="<?php echo $schedule['schedule_id']; ?>"><?php echo htmlspecialchars($schedule['game_titel']); ?> - <?php echo htmlspecialchars($schedule['date']); ?> <?php echo htmlspecialchars($schedule['time']); ?></option>
+                        <option value="<?php echo $schedule['schedule_id']; ?>"><?php echo htmlspecialchars($schedule['game_title'] . ' - ' . $schedule['date']); ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -121,6 +120,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <a href="events.php" class="btn btn-secondary ms-2">Cancel</a>
         </form>
     </div>
+    <footer class="bg-dark text-white text-center p-3">
+        <p>&copy; 2025 GamePlan Scheduler by Harsha Kanaparthi.</p>
+    </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../JS/script.js"></script>
     <script>
