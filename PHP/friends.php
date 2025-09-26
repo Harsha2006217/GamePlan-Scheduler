@@ -3,16 +3,18 @@
 // Advanced friend system with search, online status, and management
 
 require_once 'functions.php';
+session_start();
 
 // Check if user is logged in
-if (!isLoggedIn()) {
+if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
 }
 
-$userId = getCurrentUserId();
+$userId = $_SESSION['user_id'];
 $friends = getFriends($userId);
 $onlineFriends = getOnlineFriends($userId);
+$message = '';
 
 // Handle friend search
 $searchQuery = trim($_GET['search'] ?? '');
@@ -32,9 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_friend'])) {
         }
 
         addFriend($userId, $friendUsername);
-
-        $_SESSION['message'] = 'Friend request sent successfully!';
-        $_SESSION['message_type'] = 'success';
+        $message = 'Friend request sent successfully!';
 
         header('Location: friends.php');
         exit;
@@ -73,181 +73,164 @@ if (isset($_GET['remove']) && is_numeric($_GET['remove'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-    <header>
-        <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center">
-                <a href="index.php" class="logo">
-                    <i class="fas fa-gamepad"></i> GamePlan Scheduler
-                </a>
-                <nav>
-                    <ul class="d-flex">
-                        <li><a href="index.php">Dashboard</a></li>
-                        <li><a href="profile.php">Profile</a></li>
-                        <li><a href="friends.php" class="active">Friends</a></li>
-                        <li><a href="schedules.php">Schedules</a></li>
-                        <li><a href="events.php">Events</a></li>
-                        <li><a href="?logout=1">Logout</a></li>
-                    </ul>
-                </nav>
+<body class="bg-dark text-white">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.php"><i class="fas fa-gamepad"></i> GamePlan</a>
+            <div class="navbar-nav ms-auto">
+                <a href="logout.php" class="btn btn-outline-light">Logout</a>
             </div>
         </div>
-    </header>
+    </nav>
+    <div class="container mt-4">
+        <h2>Friends</h2>
 
-    <main>
-        <div class="container">
-            <div class="row">
-                <div class="col-12">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h1><i class="fas fa-users"></i> My Friends</h1>
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFriendModal">
-                            <i class="fas fa-user-plus"></i> Add Friend
-                        </button>
-                    </div>
+        <?php if (isset($message) && !empty($message)): ?>
+            <div class="alert alert-info"><?php echo htmlspecialchars($message); ?></div>
+        <?php endif; ?>
 
-                    <?php if (isset($_SESSION['message'])): ?>
-                        <div class="alert alert-<?php echo $_SESSION['message_type'] == 'error' ? 'danger' : 'success'; ?> alert-dismissible fade show" role="alert">
-                            <?php echo htmlspecialchars($_SESSION['message']); ?>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                        <?php unset($_SESSION['message'], $_SESSION['message_type']); ?>
-                    <?php endif; ?>
-                </div>
+        <!-- Add Friend Form -->
+        <form method="post" class="mb-4">
+            <div class="input-group">
+                <input type="text" class="form-control" name="friend_username" placeholder="Enter username" required>
+                <button type="submit" name="add_friend" class="btn btn-primary">
+                    <i class="fas fa-user-plus"></i> Add Friend
+                </button>
             </div>
+        </form>
 
-            <!-- Online Friends -->
-            <?php if (!empty($onlineFriends)): ?>
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-circle text-success"></i> Online Now (<?php echo count($onlineFriends); ?>)</h3>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <?php foreach ($onlineFriends as $friend): ?>
-                                        <div class="col-md-6 col-lg-4 mb-3">
-                                            <div class="card h-100">
-                                                <div class="card-body text-center">
-                                                    <div class="avatar-circle mx-auto mb-2">
-                                                        <i class="fas fa-user text-primary"></i>
-                                                    </div>
-                                                    <h6 class="card-title"><?php echo htmlspecialchars($friend['username']); ?></h6>
-                                                    <span class="badge bg-success">Online</span>
-                                                    <div class="mt-2">
-                                                        <small class="text-muted">
-                                                            Last seen: <?php echo date('g:i A', strtotime($friend['last_activity'])); ?>
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <!-- All Friends -->
-            <div class="row">
+        <!-- Online Friends -->
+        <?php if (!empty($onlineFriends)): ?>
+            <div class="row mb-4">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h3><i class="fas fa-users"></i> All Friends (<?php echo count($friends); ?>)</h3>
-                            <div class="input-group" style="max-width: 300px;">
-                                <input type="text" class="form-control" id="friendSearch" placeholder="Search friends...">
-                                <button class="btn btn-outline-secondary" type="button">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                            </div>
+                        <div class="card-header">
+                            <h3><i class="fas fa-circle text-success"></i> Online Now (<?php echo count($onlineFriends); ?>)</h3>
                         </div>
                         <div class="card-body">
-                            <?php if (empty($friends)): ?>
-                                <div class="text-center py-5">
-                                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                                    <h4 class="text-muted">No friends yet</h4>
-                                    <p class="text-muted">Start building your gaming community by adding friends!</p>
-                                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFriendModal">
-                                        <i class="fas fa-user-plus"></i> Add Your First Friend
-                                    </button>
-                                </div>
-                            <?php else: ?>
-                                <div class="row" id="friendsList">
-                                    <?php foreach ($friends as $friend): ?>
-                                        <div class="col-md-6 col-lg-4 mb-4 friend-item">
-                                            <div class="card h-100">
-                                                <div class="card-body text-center">
-                                                    <div class="avatar-circle mx-auto mb-2">
-                                                        <i class="fas fa-user text-primary"></i>
-                                                    </div>
-                                                    <h6 class="card-title"><?php echo htmlspecialchars($friend['username']); ?></h6>
-                                                    <div class="mb-2">
-                                                        <span class="badge <?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'bg-success' : 'bg-secondary'; ?>">
-                                                            <?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'Online' : 'Offline'; ?>
-                                                        </span>
-                                                    </div>
-                                                    <small class="text-muted d-block mb-3">
-                                                        Last active: <?php echo date('M j, Y g:i A', strtotime($friend['last_activity'])); ?>
+                            <div class="row">
+                                <?php foreach ($onlineFriends as $friend): ?>
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <div class="card h-100">
+                                            <div class="card-body text-center">
+                                                <div class="avatar-circle mx-auto mb-2">
+                                                    <i class="fas fa-user text-primary"></i>
+                                                </div>
+                                                <h6 class="card-title"><?php echo htmlspecialchars($friend['username']); ?></h6>
+                                                <span class="badge bg-success">Online</span>
+                                                <div class="mt-2">
+                                                    <small class="text-muted">
+                                                        Last seen: <?php echo date('g:i A', strtotime($friend['last_activity'])); ?>
                                                     </small>
-                                                    <div class="btn-group w-100">
-                                                        <button class="btn btn-outline-primary btn-sm" onclick="startChat('<?php echo htmlspecialchars($friend['username']); ?>')">
-                                                            <i class="fas fa-comment"></i> Message
-                                                        </button>
-                                                        <a href="friends.php?remove=<?php echo $friend['user_id']; ?>"
-                                                           class="btn btn-outline-danger btn-sm"
-                                                           onclick="return confirm('Are you sure you want to remove <?php echo htmlspecialchars($friend['username']); ?> from your friends?')">
-                                                            <i class="fas fa-user-minus"></i> Remove
-                                                        </a>
-                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+        <?php endif; ?>
 
-            <!-- Search Results (if searching) -->
-            <?php if (!empty($searchQuery) && !empty($searchResults)): ?>
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-search"></i> Search Results for "<?php echo htmlspecialchars($searchQuery); ?>"</h3>
+        <!-- All Friends -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3><i class="fas fa-users"></i> All Friends (<?php echo count($friends); ?>)</h3>
+                        <div class="input-group" style="max-width: 300px;">
+                            <input type="text" class="form-control" id="friendSearch" placeholder="Search friends...">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($friends)): ?>
+                            <div class="text-center py-5">
+                                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                <h4 class="text-muted">No friends yet</h4>
+                                <p class="text-muted">Start building your gaming community by adding friends!</p>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFriendModal">
+                                    <i class="fas fa-user-plus"></i> Add Your First Friend
+                                </button>
                             </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <?php foreach ($searchResults as $user): ?>
-                                        <div class="col-md-6 col-lg-4 mb-3">
-                                            <div class="card">
-                                                <div class="card-body text-center">
-                                                    <div class="avatar-circle mx-auto mb-2">
-                                                        <i class="fas fa-user text-secondary"></i>
-                                                    </div>
-                                                    <h6><?php echo htmlspecialchars($user['username']); ?></h6>
-                                                    <form method="POST" action="" class="d-inline">
-                                                        <input type="hidden" name="friend_username" value="<?php echo htmlspecialchars($user['username']); ?>">
-                                                        <button type="submit" name="add_friend" class="btn btn-success btn-sm">
-                                                            <i class="fas fa-user-plus"></i> Add Friend
-                                                        </button>
-                                                    </form>
+                        <?php else: ?>
+                            <div class="row" id="friendsList">
+                                <?php foreach ($friends as $friend): ?>
+                                    <div class="col-md-6 col-lg-4 mb-4 friend-item">
+                                        <div class="card h-100">
+                                            <div class="card-body text-center">
+                                                <div class="avatar-circle mx-auto mb-2">
+                                                    <i class="fas fa-user text-primary"></i>
+                                                </div>
+                                                <h6 class="card-title"><?php echo htmlspecialchars($friend['username']); ?></h6>
+                                                <div class="mb-2">
+                                                    <span class="badge <?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'bg-success' : 'bg-secondary'; ?>">
+                                                        <?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'Online' : 'Offline'; ?>
+                                                    </span>
+                                                </div>
+                                                <small class="text-muted d-block mb-3">
+                                                    Last active: <?php echo date('M j, Y g:i A', strtotime($friend['last_activity'])); ?>
+                                                </small>
+                                                <div class="btn-group w-100">
+                                                    <button class="btn btn-outline-primary btn-sm" onclick="startChat('<?php echo htmlspecialchars($friend['username']); ?>')">
+                                                        <i class="fas fa-comment"></i> Message
+                                                    </button>
+                                                    <a href="friends.php?remove=<?php echo $friend['user_id']; ?>"
+                                                       class="btn btn-outline-danger btn-sm"
+                                                       onclick="return confirm('Are you sure you want to remove <?php echo htmlspecialchars($friend['username']); ?> from your friends?')">
+                                                        <i class="fas fa-user-minus"></i> Remove
+                                                    </a>
                                                 </div>
                                             </div>
                                         </div>
-                                    <?php endforeach; ?>
-                                </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Results (if searching) -->
+        <?php if (!empty($searchQuery) && !empty($searchResults)): ?>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-search"></i> Search Results for "<?php echo htmlspecialchars($searchQuery); ?>"</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <?php foreach ($searchResults as $user): ?>
+                                    <div class="col-md-6 col-lg-4 mb-3">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <div class="avatar-circle mx-auto mb-2">
+                                                    <i class="fas fa-user text-secondary"></i>
+                                                </div>
+                                                <h6><?php echo htmlspecialchars($user['username']); ?></h6>
+                                                <form method="POST" action="" class="d-inline">
+                                                    <input type="hidden" name="friend_username" value="<?php echo htmlspecialchars($user['username']); ?>">
+                                                    <button type="submit" name="add_friend" class="btn btn-success btn-sm">
+                                                        <i class="fas fa-user-plus"></i> Add Friend
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
                 </div>
-            <?php endif; ?>
-        </div>
-    </main>
+            </div>
+        <?php endif; ?>
+    </div>
 
     <!-- Add Friend Modal -->
     <div class="modal fade" id="addFriendModal" tabindex="-1">

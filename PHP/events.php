@@ -11,6 +11,7 @@
  * @since 2025-09-30
  */
 
+session_start();
 require 'functions.php';
 
 // Advanced security check with session validation
@@ -67,9 +68,17 @@ unset($_SESSION['success_message'], $_SESSION['error_message']);
     <link rel="stylesheet" href="../CSS/style.css">
 </head>
 <body class="bg-dark text-light">
-    <?php include 'header.php'; ?>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.php"><i class="fas fa-gamepad"></i> GamePlan</a>
+            <div class="navbar-nav ms-auto">
+                <a href="add_event.php" class="btn btn-success me-2">Nieuw Evenement</a>
+                <a href="logout.php" class="btn btn-outline-light">Uitloggen</a>
+            </div>
+        </div>
+    </nav>
     
-    <div class="container mt-5">
+    <div class="container mt-4">
         <!-- Page Header with Statistics -->
         <div class="row mb-4">
             <div class="col-md-8">

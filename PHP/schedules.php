@@ -1,23 +1,10 @@
 <?php
-/**
- * Advanced Schedules Management System
- * GamePlan Scheduler - Professional Gaming Schedule Manager
- * 
- * This module provides comprehensive schedule management with
- * sorting, filtering, and advanced viewing options.
- * 
- * @author Harsha Kanaparthi
- * @version 2.0
- * @since 2025-09-30
- */
-
+session_start();
 require 'functions.php';
-
-if (!isLoggedIn()) {
-    header("Location: login.php");
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
     exit;
 }
-
 $user_id = $_SESSION['user_id'];
 
 // Enhanced Sorting functionality - Fix #1006

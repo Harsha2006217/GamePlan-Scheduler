@@ -5,88 +5,93 @@ A professional gaming session and event scheduling application built with PHP, M
 ## Features
 
 ### Core Functionality
-- **User Authentication**: Secure registration and login with password encryption
-- **Profile Management**: User profiles with favorite games and bio
-- **Friend System**: Add friends, view online status, and manage connections
-- **Schedule Management**: Create and manage gaming session schedules
-- **Event Management**: Organize tournaments and special gaming events
-- **Sharing System**: Share events with friends and manage permissions
+- **User Authentication**: Secure registration and login with password encryption using Argon2ID hashing
+- **Profile Management**: User profiles with favorite games and bio, editable with validation
+- **Friend System**: Add friends, view online status, and manage connections with search functionality
+- **Schedule Management**: Create and manage gaming session schedules with calendar view
+- **Event Management**: Organize tournaments and special gaming events with sharing options
+- **Sharing System**: Share events with friends and manage permissions via user mapping
+- **Real-time Updates**: Live notifications and activity tracking with JavaScript polling
+- **Search & Filtering**: Advanced search and filter options for schedules and events
+- **Responsive Design**: Mobile-friendly interface with Bootstrap 5 and custom CSS
+- **Security**: CSRF protection, input validation, session management, and brute force prevention
+- **Accessibility**: Screen reader support, keyboard navigation, and high-contrast modes
+- **Performance**: Optimized with lazy loading, debounced search, and efficient queries
 
 ### Advanced Features
-- **Real-time Updates**: Live notifications and activity tracking
-- **Search & Filtering**: Advanced search and filter options
-- **Responsive Design**: Mobile-friendly interface with modern UI
-- **Security**: CSRF protection, input validation, and secure sessions
-- **Accessibility**: Screen reader support and keyboard navigation
-- **Performance**: Optimized with lazy loading and debounced search
+- **Calendar Integration**: Interactive calendar with drag-and-drop for schedules/events
+- **Notifications**: In-app pop-ups, email reminders, and push notifications (future)
+- **Analytics Dashboard**: User activity logs and statistics (future)
+- **Multi-language Support**: English/Dutch toggle (future)
+- **API Ready**: RESTful endpoints for mobile app integration
 
 ### Technical Features
-- **Database**: MySQL with proper relationships and indexing
-- **Security**: Argon2ID password hashing, session management, brute force protection
-- **Validation**: Client and server-side validation with real-time feedback
-- **API Ready**: Structured for future API development
-- **GDPR Compliant**: Privacy-focused design with data protection
+- **Database**: MySQL with proper relationships, indexing, and normalization
+- **Security**: Argon2ID password hashing, session regeneration, input sanitization, and XSS prevention
+- **Validation**: Client-side (JavaScript) and server-side (PHP) validation with real-time feedback
+- **GDPR Compliant**: Data export/deletion options and privacy policy
+- **Scalability**: Prepared for high traffic with caching and optimization
 
 ## Technology Stack
 
-- **Backend**: PHP 8.0+ with PDO
-- **Database**: MySQL 8.0+ with UTF-8 support
+- **Backend**: PHP 8.0+ with PDO for secure database interactions
+- **Database**: MySQL 8.0+ with UTF-8 support and foreign key constraints
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
-- **Framework**: Bootstrap 5.3
-- **Icons**: Font Awesome 6
-- **Security**: Argon2ID, CSRF tokens, input sanitization
+- **Framework**: Bootstrap 5.3 for responsive grids and components
+- **Icons**: Font Awesome 6 for intuitive UI elements
+- **Security Libraries**: Built-in PHP functions for hashing and sessions
 
 ## Installation
 
 ### Prerequisites
-- PHP 8.0 or higher
+- PHP 8.0 or higher with PDO extension
 - MySQL 8.0 or higher
-- Apache/Nginx web server
-- Composer (optional, for dependency management)
+- Apache/Nginx web server with mod_rewrite
+- Composer (optional for dependencies)
+- Node.js (optional for JS minification)
 
 ### Setup Steps
 
-1. **Clone the repository**
+1. **Clone the Repository**
    ```bash
    git clone https://github.com/yourusername/gameplan-scheduler.git
    cd gameplan-scheduler
    ```
 
 2. **Database Setup**
-   ```bash
-   # Create database
-   mysql -u root -p < database/schema.sql
-
-   # Or import manually through phpMyAdmin
-   ```
+   - Import `database/schema.sql` into MySQL:
+     ```bash
+     mysql -u root -p < database/schema.sql
+     ```
+   - Update credentials in `PHP/functions.php` (e.g., DB_HOST, DB_USER, DB_PASS).
 
 3. **Web Server Configuration**
-   - Point your web server to the `PHP/` directory
-   - Ensure `mod_rewrite` is enabled for clean URLs
-   - Set proper file permissions (755 for directories, 644 for files)
+   - Point your web server document root to the `PHP/` directory
+   - Enable mod_rewrite for clean URLs
+   - Set file permissions: 755 for directories, 644 for files
+   - Ensure PHP settings: upload_max_filesize=5M, session.gc_maxlifetime=1800
 
 4. **Configuration**
-   - Update database credentials in `functions.php`
-   - Configure email settings if needed
-   - Set up SSL certificate for production
+   - Update email settings in `PHP/functions.php` for notifications
+   - Configure HTTPS in production
+   - Set up environment variables for security (e.g., via .env file)
 
 5. **Access the Application**
-   - Open your browser and navigate to the application URL
+   - Navigate to the application URL
    - Register a new account or use demo credentials
 
 ## Database Schema
 
-The application uses a normalized MySQL database with the following main tables:
+The application uses a normalized MySQL database:
 
-- `Users` - User accounts and profiles
-- `Games` - Available games library
-- `UserGames` - User favorite games (many-to-many)
-- `Friends` - Friend relationships
-- `Schedules` - Gaming session schedules
-- `Events` - Tournaments and special events
-- `EventUserMap` - Event sharing with friends
-- `activity_log` - User activity tracking
-- `login_attempts` - Security logging
+- `Users` (user_id PK, username, email, password_hash, last_activity)
+- `Games` (game_id PK, title, description)
+- `UserGames` (user_id FK, game_id FK)
+- `Friends` (friend_id PK, user_id FK, friend_user_id FK)
+- `Schedules` (schedule_id PK, user_id FK, game_id FK, date, time, friends)
+- `Events` (event_id PK, user_id FK, title, date, time, description, reminder, schedule_id FK)
+- `EventUserMap` (event_id FK, friend_id FK)
+- `activity_log` (log_id PK, user_id FK, action, timestamp)
 
 ## File Structure
 

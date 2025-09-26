@@ -702,6 +702,59 @@ class GamePlanNotifications {
     }
 }
 
+// Validation and interactivity for GamePlan Scheduler
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const title = form.querySelector('[name="title"]');
+            if (title && title.value.trim() === '') {
+                alert('Title is required.');
+                e.preventDefault();
+                return;
+            }
+            const date = form.querySelector('[name="date"]');
+            if (date && new Date(date.value) < new Date()) {
+                alert('Date must be in the future.');
+                e.preventDefault();
+                return;
+            }
+            const time = form.querySelector('[name="time"]');
+            if (time && !/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time.value)) {
+                alert('Invalid time format.');
+                e.preventDefault();
+                return;
+            }
+        });
+    });
+
+    // Reminder pop-ups (simulate)
+    const reminders = document.querySelectorAll('[data-reminder]');
+    reminders.forEach(reminder => {
+        const time = new Date(reminder.dataset.reminder);
+        if (time > new Date()) {
+            setTimeout(() => {
+                alert('Reminder: ' + reminder.textContent);
+            }, time - new Date());
+        }
+    });
+
+    // Debounced search (for future)
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+});
+
 // Advanced JavaScript for GamePlan Scheduler - Professional Gaming Features
 
 // DOM Content Loaded

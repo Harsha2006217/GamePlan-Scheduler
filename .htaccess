@@ -22,11 +22,15 @@ RewriteEngine On
     # Referrer policy
     Header set Referrer-Policy "strict-origin-when-cross-origin"
 
-    # Content Security Policy (adjust as needed)
+    # Content Security Policy (strict for security)
     Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'"
 
-    # HSTS (uncomment in production with HTTPS)
+    # HSTS (uncomment in production)
     # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    # Additional security
+    Header set X-Content-Security-Policy "default-src 'self'"
+    Header set X-WebKit-CSP "default-src 'self'"
 </IfModule>
 
 # Block access to sensitive files
@@ -41,13 +45,13 @@ RewriteEngine On
     Deny from all
 </FilesMatch>
 
-# Block access to hidden files (except .well-known for Let's Encrypt)
+# Block access to hidden files (except .well-known)
 <FilesMatch "^\.">
     Order Allow,Deny
     Deny from all
 </FilesMatch>
 
-# Allow access to .well-known for SSL certificates
+# Allow access to .well-known
 <FilesMatch "^\.well-known">
     Order Allow,Deny
     Allow from all

@@ -3,6 +3,7 @@
 // Advanced user profile editing with favorite games management
 
 require_once 'functions.php';
+session_start();
 
 // Check if user is logged in
 if (!isLoggedIn()) {
@@ -14,6 +15,7 @@ $userId = getCurrentUserId();
 $user = getUserProfile($userId);
 $games = getGames();
 $favoriteGames = getFavoriteGames($userId);
+$message = '';
 
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
