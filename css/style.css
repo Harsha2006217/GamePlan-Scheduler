@@ -1,0 +1,99 @@
+/* Custom CSS voor GamePlan Scheduler - Dark game theme */
+/* Geavanceerd met variabelen, media queries voor responsive, hover/transitions voor interactie */
+
+:root {
+    --primary-color: #0d6efd;  /* Blauw voor knoppen */
+    --secondary-color: #2c2c2c;  /* Donkergrijs voor cards */
+    --background-color: #121212;  /* Donker voor body */
+    --text-color: #f8f9fa;  /* Licht voor tekst */
+    --alert-success: #198754;  /* Groen voor succes */
+    --alert-danger: #dc3545;  /* Rood voor errors */
+    --border-radius: 10px;  /* Ronde hoeken */
+    --padding-base: 12px;  /* Basis padding */
+    --font-base: 'sans-serif';  /* Standaard font */
+    --font-size-base: 1.1em;  /* Basis tekstgrootte */
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: var(--font-base);
+    font-size: var(--font-size-base);
+    margin-top: 60px;  /* Voor fixed header */
+    margin-left: 60px;  /* Voor zijruimte */
+}
+
+@media (max-width: 768px) {
+    body {
+        margin-top: 15px;
+        margin-left: 15px;
+        font-size: 0.9em;  /* Kleiner op mobiel */
+    }
+    .table {
+        font-size: 0.9em;
+    }
+    .container {
+        padding: 15px;
+    }
+}
+
+.card {
+    background-color: var(--secondary-color);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--padding-base);
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: scale(1.02);  /* Lichte zoom op hover voor interactie */
+}
+
+.table-dark {
+    background-color: #1e1e1e;
+}
+
+.table td, .table th {
+    padding: var(--padding-base);
+    border: 1px solid #dddddd;
+}
+
+.table thead th {
+    background-color: lightblue;
+}
+
+.btn-primary {
+    border-radius: var(--border-radius);
+    transition: background-color 0.3s ease;  /* Smooth hover */
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;  /* Donkerder blauw op hover */
+}
+
+.alert {
+    border-radius: var(--border-radius);
+}
+
+.list-group-item-dark {
+    background-color: #1e1e1e;
+    border: 1px solid #dddddd;
+}
+
+.navbar-dark .nav-link:hover {
+    color: #ffffff !important;  /* Wit op hover voor menu */
+}
+
+footer {
+    background-color: var(--primary-color);
+    padding: 15px 0;
+    margin-top: auto;  /* Zorgt dat footer onderaan blijft */
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);  /* Focus effect */
+}
+
+.badge {
+    font-size: 0.8em;
+}
