@@ -1,25 +1,44 @@
 <?php
-// Registratie pagina voor GamePlan Scheduler
-// Met geavanceerde validatie op server en client, inclusief password strength check
-
 require 'functions.php';
-
+if (isLoggedIn()) {
+    header("Location: index.php");
+    exit;
+}
+$error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = $_POST['username'] ?? '';
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
-
-    try {
-        registerUser($username, $email, $password);
-        $_SESSION['msg'] = "Registratie succesvol! Log in om te beginnen.";
-        header("Location: login.php");
-        exit;
-    } catch (Exception $e) {
-        $error = $e->getMessage();
+    $username = trim($_POST['username']);
+    $email = trim($_POST['email']);
+    $password = $_POST['password'];
+    if (empty($username) || strlen($username) > 50) {
+        $error = 'Username verplicht, max 50 tekens.';
+    } elseif (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+        $error = 'Ongeldige email.';
+    } elseif (strlen($password) < 6) {
+        $error = 'Wachtwoord minstens 6 tekens.';
+    } else {
+        global $pdo;
+        // Check of email al bestaat
+        $stmt = $pdo->prepare("SELECT * FROM Users WHERE email = :email");
+        $stmt->bindParam(':email', $email);
+        $stmt->execute();
+        if ($stmt->fetch()) {
+            $error = 'Email bestaat al.';
+        } else {
+            $hash = hashPassword($password);
+            $stmt = $pdo->prepare("INSERT INTO Users (username, email, password_hash) VALUES (:username, :email, :hash)");
+            $stmt->bindParam(':username', $username);
+            $stmt->bindParam(':email', $email);
+            $stmt->bindParam(':hash', $hash);
+            if ($stmt->execute()) {
+                header("Location: login.php?msg=Registratie succesvol, log in.");
+                exit;
+            } else {
+                $error = 'Registratie mislukt, probeer opnieuw.';
+            }
+        }
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -28,39 +47,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>Registreren - GamePlan Scheduler</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <script src="script.js" defer></script>
 </head>
-<body class="bg-dark text-light d-flex align-items-center justify-content-center vh-100">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-4">
-                <div class="card bg-secondary border-0 shadow-lg rounded-3">
-                    <div class="card-body p-4">
-                        <h2 class="card-title text-center mb-4">Registreren</h2>
-                        <?php if (isset($error)): ?>
-                            <div class="alert alert-danger"><?php echo sanitizeInput($error); ?></div>
-                        <?php endif; ?>
-                        <form method="POST" id="registerForm">
-                            <div class="mb-3">
-                                <label for="username" class="form-label">Gebruikersnaam</label>
-                                <input type="text" class="form-control" id="username" name="username" required minlength="3" maxlength="50" placeholder="gamerpro" pattern="^[a-zA-Z0-9]+$">
-                            </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">E-mail</label>
-                                <input type="email" class="form-control" id="email" name="email" required placeholder="jouw@email.com">
-                            </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Wachtwoord</label>
-                                <input type="password" class="form-control" id="password" name="password" required minlength="8">
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">Registreren</button>
-                        </form>
-                        <p class="text-center mt-3">Al een account? <a href="login.php" class="text-primary">Log in hier</a>.</p>
-                    </div>
-                </div>
+<body>
+    <div class="container mt-5">
+        <h2>Registreren</h2>
+        <?php if ($error): ?><div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+        <form method="POST" onsubmit="return validateForm(this);">
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" id="username" name="username" class="form-control" required maxlength="50">
             </div>
-        </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" id="email" name="email" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Wachtwoord</label>
+                <input type="password" id="password" name="password" class="form-control" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary">Registreren</button>
+        </form>
+        <p class="mt-3">Al een account? <a href="login.php">Inloggen</a></p>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

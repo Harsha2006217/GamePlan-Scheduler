@@ -1,99 +1,100 @@
-/* Custom CSS voor GamePlan Scheduler - Dark game theme */
-/* Geavanceerd met variabelen, media queries voor responsive, hover/transitions voor interactie */
-
-:root {
-    --primary-color: #0d6efd;  /* Blauw voor knoppen */
-    --secondary-color: #2c2c2c;  /* Donkergrijs voor cards */
-    --background-color: #121212;  /* Donker voor body */
-    --text-color: #f8f9fa;  /* Licht voor tekst */
-    --alert-success: #198754;  /* Groen voor succes */
-    --alert-danger: #dc3545;  /* Rood voor errors */
-    --border-radius: 10px;  /* Ronde hoeken */
-    --padding-base: 12px;  /* Basis padding */
-    --font-base: 'sans-serif';  /* Standaard font */
-    --font-size-base: 1.1em;  /* Basis tekstgrootte */
-}
-
 body {
-    background-color: var(--background-color);
-    color: var(--text-color);
-    font-family: var(--font-base);
-    font-size: var(--font-size-base);
-    margin-top: 60px;  /* Voor fixed header */
-    margin-left: 60px;  /* Voor zijruimte */
+    background-color: #121212;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    font-size: 1.1em;
+    margin-top: 60px;
+    margin-left: 60px;
 }
 
-@media (max-width: 768px) {
-    body {
-        margin-top: 15px;
-        margin-left: 15px;
-        font-size: 0.9em;  /* Kleiner op mobiel */
-    }
-    .table {
-        font-size: 0.9em;
-    }
-    .container {
-        padding: 15px;
-    }
+header {
+    background-color: #000;
+    height: 80px;
+    position: fixed;
+    top: 0;
+    width: 100%;
 }
 
-.card {
-    background-color: var(--secondary-color);
-    border-radius: var(--border-radius);
-    margin-bottom: var(--padding-base);
-    transition: transform 0.2s ease-in-out;
+.nav-link {
+    color: #fff !important;
 }
 
-.card:hover {
-    transform: scale(1.02);  /* Lichte zoom op hover voor interactie */
+.nav-link:hover {
+    color: #0d6efd !important;
+}
+
+.btn {
+    border-radius: 20px;
+    background-color: #0d6efd;
+    color: #fff;
+}
+
+.btn:hover {
+    background-color: #0a58ca;
 }
 
 .table-dark {
     background-color: #1e1e1e;
-}
-
-.table td, .table th {
-    padding: var(--padding-base);
     border: 1px solid #dddddd;
 }
 
-.table thead th {
+.table th {
     background-color: lightblue;
 }
 
-.btn-primary {
-    border-radius: var(--border-radius);
-    transition: background-color 0.3s ease;  /* Smooth hover */
+.table th, .table td {
+    padding: 12px;
 }
 
-.btn-primary:hover {
-    background-color: #0b5ed7;  /* Donkerder blauw op hover */
+.table {
+    width: 600px;
+    border-collapse: collapse;
 }
 
-.alert {
-    border-radius: var(--border-radius);
-}
-
-.list-group-item-dark {
-    background-color: #1e1e1e;
-    border: 1px solid #dddddd;
-}
-
-.navbar-dark .nav-link:hover {
-    color: #ffffff !important;  /* Wit op hover voor menu */
+.card {
+    background-color: #2c2c2c;
+    border-radius: 10px;
+    margin-bottom: 12px;
 }
 
 footer {
-    background-color: var(--primary-color);
+    background-color: #000;
+    color: #fff;
+    height: 50px;
     padding: 15px 0;
-    margin-top: auto;  /* Zorgt dat footer onderaan blijft */
+    text-align: center;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
 }
 
-.form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);  /* Focus effect */
+.alert-success {
+    background-color: green;
+    color: #fff;
 }
 
-.badge {
-    font-size: 0.8em;
+.alert-danger {
+    background-color: red;
+    color: #fff;
+}
+
+.form-control {
+    background-color: #2c2c2c;
+    color: #fff;
+    border: 1px solid #dddddd;
+}
+
+@media (max-width: 768px) {
+    .nav {
+        flex-direction: column;
+    }
+    .table {
+        font-size: 0.9em;
+    }
+    body {
+        font-size: 1em;
+    }
+    .container {
+        padding: 15px;
+    }
 }
