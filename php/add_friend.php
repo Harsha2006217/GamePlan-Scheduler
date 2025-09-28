@@ -41,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="text" id="friend_username" name="friend_username" class="form-control" required>
             </div>
             <button type="submit" class="btn btn-primary">Toevoegen</button>
+            <a href="index.php" class="btn btn-primary">Terug naar dashboard</a>
         </form>
     </div>
 </body>

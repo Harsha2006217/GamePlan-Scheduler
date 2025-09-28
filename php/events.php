@@ -53,6 +53,7 @@ $events = getEvents($user_id);
             </tbody>
         </table>
         <a href="add_event.php" class="btn btn-primary">Evenement toevoegen</a>
+        <a href="index.php" class="btn btn-primary">Terug naar dashboard</a>
     </div>
 </body>
 </html>

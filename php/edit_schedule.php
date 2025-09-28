@@ -74,6 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <?php endforeach; ?>
             </div>
             <button type="submit" class="btn btn-primary">Opslaan</button>
+            <a href="schedules.php" class="btn btn-secondary">Annuleren</a>
+            <a href="index.php" class="btn btn-primary">Terug naar dashboard</a>
         </form>
     </div>
     <script src="script.js"></script>

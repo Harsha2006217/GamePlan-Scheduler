@@ -31,6 +31,7 @@ $friends = getFriends($user_id);
             <?php endif; ?>
         </ul>
         <a href="add_friend.php" class="btn btn-primary mt-3">Vriend toevoegen</a>
+        <a href="index.php" class="btn btn-primary">Terug naar dashboard</a>
     </div>
 </body>
 </html>

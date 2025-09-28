@@ -49,6 +49,7 @@ $schedules = getSchedules($user_id);
             </tbody>
         </table>
         <a href="add_schedule.php" class="btn btn-primary">Schema toevoegen</a>
+        <a href="index.php" class="btn btn-secondary">Terug naar Dashboard</a>
     </div>
 </body>
 </html>
