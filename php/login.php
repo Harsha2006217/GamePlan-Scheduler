@@ -9,12 +9,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
     if (empty($email) || empty($password)) {
-        $error = 'Email en wachtwoord verplicht.';
-    } elseif (loginUser($email, $password)) {
-        header("Location: index.php");
-        exit;
+        $error = 'Email en wachtwoord zijn verplicht.';
     } else {
-        $error = 'Ongeldige email of wachtwoord.';
+        if (loginUser($email, $password)) {
+            header("Location: index.php");
+            exit;
+        } else {
+            $error = 'Ongeldige email of wachtwoord.';
+        }
     }
 }
 ?>
@@ -30,7 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body>
     <div class="container mt-5">
         <h2>Inloggen</h2>
-        <?php if ($error): ?><div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+        <?php if ($error): ?>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
         <form method="POST" onsubmit="return validateForm(this);">
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
@@ -42,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             <button type="submit" class="btn btn-primary">Inloggen</button>
         </form>
-        <p class="mt-3">Nog geen account? <a href="register.php">Registreren</a></p>
+        <p class="mt-3">Geen account? <a href="register.php">Registreren</a></p>
     </div>
     <script src="script.js"></script>
 </body>

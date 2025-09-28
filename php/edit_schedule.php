@@ -1,29 +1,35 @@
 <?php
 require 'functions.php';
-if (!isLoggedIn()) header("Location: login.php");
+if (!isLoggedIn()) {
+    header("Location: login.php");
+    exit;
+}
 $id = $_GET['id'] ?? 0;
 $user_id = $_SESSION['user_id'];
-$games = getGames();
-$friends_list = getFriends($user_id);
 global $pdo;
 $stmt = $pdo->prepare("SELECT * FROM Schedules WHERE schedule_id = :id AND user_id = :user");
 $stmt->bindParam(':id', $id);
 $stmt->bindParam(':user', $user_id);
 $stmt->execute();
 $schedule = $stmt->fetch();
-if (!$schedule) header("Location: index.php");
+if (!$schedule) {
+    header("Location: schedules.php");
+    exit;
+}
+$games = getGames();
+$friends = getFriends($user_id);
 $selected_friends = explode(',', $schedule['friends']);
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $game_id = $_POST['game_id'];
     $date = $_POST['date'];
     $time = $_POST['time'];
-    $friends = $_POST['friends'] ?? [];
-    if (editSchedule($id, $game_id, $date, $time, $friends)) {
-        header("Location: index.php");
+    $friends_selected = $_POST['friends'] ?? [];
+    if (editSchedule($id, $game_id, $date, $time, $friends_selected)) {
+        header("Location: schedules.php");
         exit;
     } else {
-        $message = '<div class="alert alert-danger">Fout bij update: controleer inputs.</div>';
+        $message = '<div class="alert alert-danger">Fout bij bewerken: controleer inputs.</div>';
     }
 }
 ?>
@@ -42,9 +48,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php echo $message; ?>
         <form method="POST" onsubmit="return validateForm(this);">
             <div class="mb-3">
-                <label for="game_id" class="form-label">Game selecteren</label>
+                <label for="game_id" class="form-label">Game</label>
                 <select id="game_id" name="game_id" class="form-select" required>
-                    <option value="">Kies een game</option>
+                    <option value="">Kies game</option>
                     <?php foreach ($games as $game): ?>
                         <option value="<?php echo $game['game_id']; ?>" <?php if ($game['game_id'] == $schedule['game_id']) echo 'selected'; ?>><?php echo htmlspecialchars($game['titel']); ?></option>
                     <?php endforeach; ?>
@@ -59,11 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="time" id="time" name="time" class="form-control" value="<?php echo $schedule['time']; ?>" required>
             </div>
             <div class="mb-3">
-                <label>Vrienden selecteren:</label>
-                <?php foreach ($friends_list as $friend): ?>
+                <label>Vrienden (optioneel)</label>
+                <?php foreach ($friends as $friend): ?>
                     <div class="form-check">
-                        <input type="checkbox" name="friends[]" value="<?php echo $friend['user_id']; ?>" class="form-check-input" <?php if (in_array($friend['user_id'], $selected_friends)) echo 'checked'; ?>>
-                        <?php echo htmlspecialchars($friend['username']); ?>
+                        <input type="checkbox" name="friends[]" value="<?php echo $friend['user_id']; ?>" class="form-check-input" <?php if (in_array($friend['username'], $selected_friends)) echo 'checked'; ?>>
+                        <label class="form-check-label"><?php echo htmlspecialchars($friend['username']); ?></label>
                     </div>
                 <?php endforeach; ?>
             </div>

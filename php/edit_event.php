@@ -1,18 +1,30 @@
 <?php
 require 'functions.php';
-if (!isLoggedIn()) header("Location: login.php");
+if (!isLoggedIn()) {
+    header("Location: login.php");
+    exit;
+}
 $id = $_GET['id'] ?? 0;
 $user_id = $_SESSION['user_id'];
-$schedules = getSchedules($user_id);
-$friends_list = getFriends($user_id);
 global $pdo;
 $stmt = $pdo->prepare("SELECT * FROM Events WHERE event_id = :id AND user_id = :user");
 $stmt->bindParam(':id', $id);
 $stmt->bindParam(':user', $user_id);
 $stmt->execute();
 $event = $stmt->fetch();
-if (!$event) header("Location: index.php");
-$shared_friends = array_column($event['shared_with'], 'username');
+if (!$event) {
+    header("Location: events.php");
+    exit;
+}
+$schedules = getSchedules($user_id);
+$friends = getFriends($user_id);
+$shared_friends_ids = [];
+$stmt = $pdo->prepare("SELECT friend_id FROM EventUserMap WHERE event_id = :event");
+$stmt->bindParam(':event', $id);
+$stmt->execute();
+while ($row = $stmt->fetch()) {
+    $shared_friends_ids[] = $row['friend_id'];
+}
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $title = trim($_POST['title']);
@@ -21,12 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $description = trim($_POST['description']);
     $reminder = $_POST['reminder'];
     $schedule_id = $_POST['schedule_id'] ?: null;
-    $shared_friends_post = $_POST['shared_friends'] ?? [];
-    if (editEvent($id, $title, $date, $time, $description, $reminder, $schedule_id, $shared_friends_post)) {
-        header("Location: index.php");
+    $shared_friends = $_POST['shared_friends'] ?? [];
+    if (editEvent($id, $title, $date, $time, $description, $reminder, $schedule_id, $shared_friends)) {
+        header("Location: events.php");
         exit;
     } else {
-        $message = '<div class="alert alert-danger">Fout bij update: controleer inputs.</div>';
+        $message = '<div class="alert alert-danger">Fout bij bewerken: controleer inputs.</div>';
     }
 }
 ?>
@@ -63,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="mb-3">
                 <label for="reminder" class="form-label">Herinnering</label>
                 <select id="reminder" name="reminder" class="form-select">
-                    <option value="" <?php if ($event['reminder'] == '') echo 'selected'; ?>>Geen herinnering</option>
+                    <option value="" <?php if ($event['reminder'] == '') echo 'selected'; ?>>Geen</option>
                     <option value="1 uur ervoor" <?php if ($event['reminder'] == '1 uur ervoor') echo 'selected'; ?>>1 uur ervoor</option>
                     <option value="1 dag ervoor" <?php if ($event['reminder'] == '1 dag ervoor') echo 'selected'; ?>>1 dag ervoor</option>
                 </select>
@@ -73,16 +85,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <select id="schedule_id" name="schedule_id" class="form-select">
                     <option value="">Geen schema</option>
                     <?php foreach ($schedules as $sched): ?>
-                        <option value="<?php echo $sched['schedule_id']; ?>" <?php if ($sched['schedule_id'] == $event['schedule_id']) echo 'selected'; ?>><?php echo htmlspecialchars($sched['game_titel']) . ' - ' . $sched['date']; ?></option>
+                        <option value="<?php echo $sched['schedule_id']; ?>" <?php if ($sched['schedule_id'] == $event['schedule_id']) echo 'selected'; ?>><?php echo htmlspecialchars($sched['game_titel']) . ' - ' . $sched['date'] . ' om ' . $sched['time']; ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="mb-3">
-                <label>Deel met vrienden (optioneel):</label>
-                <?php foreach ($friends_list as $friend): ?>
+                <label>Deel met vrienden (optioneel)</label>
+                <?php foreach ($friends as $friend): ?>
                     <div class="form-check">
-                        <input type="checkbox" name="shared_friends[]" value="<?php echo $friend['user_id']; ?>" class="form-check-input" <?php if (in_array($friend['username'], $shared_friends)) echo 'checked'; ?>>
-                        <?php echo htmlspecialchars($friend['username']); ?>
+                        <input type="checkbox" name="shared_friends[]" value="<?php echo $friend['user_id']; ?>" class="form-check-input" <?php if (in_array($friend['user_id'], $shared_friends_ids)) echo 'checked'; ?>>
+                        <label class="form-check-label"><?php echo htmlspecialchars($friend['username']); ?></label>
                     </div>
                 <?php endforeach; ?>
             </div>

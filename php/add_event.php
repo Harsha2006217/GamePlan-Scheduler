@@ -1,9 +1,12 @@
 <?php
 require 'functions.php';
-if (!isLoggedIn()) header("Location: login.php");
+if (!isLoggedIn()) {
+    header("Location: login.php");
+    exit;
+}
 $user_id = $_SESSION['user_id'];
 $schedules = getSchedules($user_id);
-$friends_list = getFriends($user_id);
+$friends = getFriends($user_id);
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $title = trim($_POST['title']);
@@ -14,9 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $schedule_id = $_POST['schedule_id'] ?: null;
     $shared_friends = $_POST['shared_friends'] ?? [];
     if (addEvent($user_id, $title, $date, $time, $description, $reminder, $schedule_id, $shared_friends)) {
-        $message = '<div class="alert alert-success">Evenement toegevoegd.</div>';
+        header("Location: events.php");
+        exit;
     } else {
-        $message = '<div class="alert alert-danger">Fout: controleer inputs (bijv. titel niet leeg, max 100 tekens, toekomstige datum).</div>';
+        $message = '<div class="alert alert-danger">Fout bij toevoegen: controleer inputs.</div>';
     }
 }
 ?>
@@ -53,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="mb-3">
                 <label for="reminder" class="form-label">Herinnering</label>
                 <select id="reminder" name="reminder" class="form-select">
-                    <option value="">Geen herinnering</option>
+                    <option value="">Geen</option>
                     <option value="1 uur ervoor">1 uur ervoor</option>
                     <option value="1 dag ervoor">1 dag ervoor</option>
                 </select>
@@ -63,16 +67,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <select id="schedule_id" name="schedule_id" class="form-select">
                     <option value="">Geen schema</option>
                     <?php foreach ($schedules as $sched): ?>
-                        <option value="<?php echo $sched['schedule_id']; ?>"><?php echo htmlspecialchars($sched['game_titel']) . ' - ' . $sched['date']; ?></option>
+                        <option value="<?php echo $sched['schedule_id']; ?>"><?php echo htmlspecialchars($sched['game_titel']) . ' - ' . $sched['date'] . ' om ' . $sched['time']; ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="mb-3">
-                <label>Deel met vrienden (optioneel):</label>
-                <?php foreach ($friends_list as $friend): ?>
+                <label>Deel met vrienden (optioneel)</label>
+                <?php foreach ($friends as $friend): ?>
                     <div class="form-check">
                         <input type="checkbox" name="shared_friends[]" value="<?php echo $friend['user_id']; ?>" class="form-check-input">
-                        <?php echo htmlspecialchars($friend['username']); ?>
+                        <label class="form-check-label"><?php echo htmlspecialchars($friend['username']); ?></label>
                     </div>
                 <?php endforeach; ?>
             </div>

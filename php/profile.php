@@ -1,22 +1,24 @@
 <?php
 require 'functions.php';
-if (!isLoggedIn()) header("Location: login.php");
+if (!isLoggedIn()) {
+    header("Location: login.php");
+    exit;
+}
 $user_id = $_SESSION['user_id'];
-$profile = getProfile($user_id);
 $games = getGames();
 $favorite_games = getFavoriteGames($user_id);
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Verwijder oude favorites
+    global $pdo;
     $stmt = $pdo->prepare("DELETE FROM UserGames WHERE user_id = :user");
     $stmt->bindParam(':user', $user_id);
     $stmt->execute();
-    // Voeg nieuwe toe
-    $favorite_ids = $_POST['favorite_games'] ?? [];
-    foreach ($favorite_ids as $game_id) {
+    $selected_games = $_POST['favorite_games'] ?? [];
+    foreach ($selected_games as $game_id) {
         addFavoriteGame($user_id, $game_id);
     }
     $message = '<div class="alert alert-success">Favoriete games opgeslagen.</div>';
+    $favorite_games = getFavoriteGames($user_id);
 }
 ?>
 <!DOCTYPE html>
@@ -33,16 +35,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <h2>Profiel bewerken</h2>
         <?php echo $message; ?>
         <form method="POST">
-            <div class="mb-3">
-                <label>Favoriete games selecteren:</label>
-                <?php foreach ($games as $game): ?>
-                    <div class="form-check">
-                        <input type="checkbox" name="favorite_games[]" value="<?php echo $game['game_id']; ?>" class="form-check-input" <?php if (array_search($game['titel'], array_column($favorite_games, 'titel')) !== false) echo 'checked'; ?>>
-                        <?php echo htmlspecialchars($game['titel']); ?> - <?php echo htmlspecialchars($game['description']); ?>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <button type="submit" class="btn btn-primary">Opslaan</button>
+            <h3>Favoriete Games</h3>
+            <?php foreach ($games as $game): ?>
+                <div class="form-check">
+                    <input type="checkbox" name="favorite_games[]" value="<?php echo $game['game_id']; ?>" class="form-check-input" <?php if (in_array($game['titel'], array_column($favorite_games, 'titel'))) echo 'checked'; ?>>
+                    <label class="form-check-label"><?php echo htmlspecialchars($game['titel']); ?> - <?php echo htmlspecialchars($game['description']); ?></label>
+                </div>
+            <?php endforeach; ?>
+            <button type="submit" class="btn btn-primary mt-3">Opslaan</button>
         </form>
     </div>
 </body>

@@ -2,23 +2,22 @@
 session_start();
 require 'db.php';
 
-// Functie om wachtwoord veilig te hashen met bcrypt
+// Wachtwoord hashen met bcrypt
 function hashPassword($password) {
     return password_hash($password, PASSWORD_BCRYPT);
 }
 
-// Functie om gebruiker in te loggen met email en wachtwoord, inclusief laatste activiteit update
+// Login gebruiker, check password en update last_activity
 function loginUser($email, $password) {
     global $pdo;
     $stmt = $pdo->prepare("SELECT * FROM Users WHERE email = :email");
     $stmt->bindParam(':email', $email);
     $stmt->execute();
     $user = $stmt->fetch();
-
     if ($user && password_verify($password, $user['password_hash'])) {
         $_SESSION['user_id'] = $user['user_id'];
-        session_regenerate_id(true); // Security: nieuwe sessie ID tegen session fixation
-        // Update laatste activiteit voor online status
+        session_regenerate_id(true); // Prevent session fixation
+        // Update last_activity
         $stmt = $pdo->prepare("UPDATE Users SET last_activity = NOW() WHERE user_id = :id");
         $stmt->bindParam(':id', $user['user_id']);
         $stmt->execute();
@@ -27,12 +26,12 @@ function loginUser($email, $password) {
     return false;
 }
 
-// Functie om te checken of gebruiker is ingelogd
+// Check of ingelogd
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
 }
 
-// Functie om profiel op te halen
+// Profiel ophalen
 function getProfile($user_id) {
     global $pdo;
     $stmt = $pdo->prepare("SELECT * FROM Users WHERE user_id = :id");
@@ -41,7 +40,7 @@ function getProfile($user_id) {
     return $stmt->fetch();
 }
 
-// Functie om favoriete games op te halen (via UserGames join Games)
+// Favoriete games ophalen
 function getFavoriteGames($user_id) {
     global $pdo;
     $stmt = $pdo->prepare("SELECT g.titel, g.description FROM UserGames ug JOIN Games g ON ug.game_id = g.game_id WHERE ug.user_id = :user");
@@ -50,16 +49,16 @@ function getFavoriteGames($user_id) {
     return $stmt->fetchAll();
 }
 
-// Functie om favoriete game toe te voegen
+// Favoriete game toevoegen
 function addFavoriteGame($user_id, $game_id) {
     global $pdo;
-    $stmt = $pdo->prepare("INSERT IGNORE INTO UserGames (user_id, game_id) VALUES (:user, :game)"); // IGNORE om duplicates te voorkomen
+    $stmt = $pdo->prepare("INSERT IGNORE INTO UserGames (user_id, game_id) VALUES (:user, :game)");
     $stmt->bindParam(':user', $user_id);
     $stmt->bindParam(':game', $game_id);
     return $stmt->execute();
 }
 
-// Functie om alle games op te halen voor dropdowns
+// Alle games ophalen
 function getGames() {
     global $pdo;
     $stmt = $pdo->prepare("SELECT * FROM Games");
@@ -67,17 +66,16 @@ function getGames() {
     return $stmt->fetchAll();
 }
 
-// Functie om vriend toe te voegen, check op zichzelf en bestaande
+// Vriend toevoegen, check zelf en duplicaat
 function addFriend($user_id, $friend_username) {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE username = :username AND user_id != :user"); // Niet zichzelf
+    $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE username = :username AND user_id != :user");
     $stmt->bindParam(':username', $friend_username);
     $stmt->bindParam(':user', $user_id);
     $stmt->execute();
     $friend = $stmt->fetch();
     if ($friend) {
         $friend_id = $friend['user_id'];
-        // Check of al vriend
         $stmt = $pdo->prepare("SELECT * FROM Friends WHERE user_id = :user AND friend_user_id = :friend");
         $stmt->bindParam(':user', $user_id);
         $stmt->bindParam(':friend', $friend_id);
@@ -93,7 +91,7 @@ function addFriend($user_id, $friend_username) {
     return false;
 }
 
-// Functie om vrienden op te halen met online status (laatste activiteit <5 min)
+// Vrienden ophalen met online status
 function getFriends($user_id) {
     global $pdo;
     $stmt = $pdo->prepare("SELECT u.user_id, u.username, u.last_activity FROM Friends f JOIN Users u ON f.friend_user_id = u.user_id WHERE f.user_id = :user");
@@ -102,10 +100,10 @@ function getFriends($user_id) {
     return $stmt->fetchAll();
 }
 
-// Functie om schema toe te voegen met game_id
+// Schema toevoegen
 function addSchedule($user_id, $game_id, $date, $time, $friends) {
     global $pdo;
-    if (empty($game_id) || strtotime($date) < time() || preg_match('/^-/', $time)) { // Validatie: game_id, toekomst date, positieve time
+    if (empty($game_id) || strtotime($date) < time() || preg_match('/^-/', $time)) {
         return false;
     }
     $friends_str = implode(',', $friends);
@@ -118,16 +116,16 @@ function addSchedule($user_id, $game_id, $date, $time, $friends) {
     return $stmt->execute();
 }
 
-// Functie om schema's op te halen met game titel
+// Schema's ophalen
 function getSchedules($user_id) {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT s.*, g.titel AS game_titel FROM Schedules s JOIN Games g ON s.game_id = g.game_id WHERE s.user_id = :user ORDER BY date, time LIMIT 50"); // Efficiënt met limit
+    $stmt = $pdo->prepare("SELECT s.*, g.titel AS game_titel FROM Schedules s JOIN Games g ON s.game_id = g.game_id WHERE s.user_id = :user ORDER BY date, time LIMIT 50");
     $stmt->bindParam(':user', $user_id);
     $stmt->execute();
     return $stmt->fetchAll();
 }
 
-// Functie om schema te bewerken
+// Schema bewerken
 function editSchedule($schedule_id, $game_id, $date, $time, $friends) {
     global $pdo;
     $friends_str = implode(',', $friends);
@@ -140,7 +138,7 @@ function editSchedule($schedule_id, $game_id, $date, $time, $friends) {
     return $stmt->execute();
 }
 
-// Functie om schema te verwijderen
+// Schema verwijderen
 function deleteSchedule($schedule_id) {
     global $pdo;
     $stmt = $pdo->prepare("DELETE FROM Schedules WHERE schedule_id = :id");
@@ -148,10 +146,10 @@ function deleteSchedule($schedule_id) {
     return $stmt->execute();
 }
 
-// Functie om evenement toe te voegen met optional schedule_id en sharing met friends
+// Evenement toevoegen
 function addEvent($user_id, $title, $date, $time, $description, $reminder, $schedule_id, $shared_friends) {
     global $pdo;
-    if (empty($title) || strlen($title) > 100 || strtotime($date) < time() || preg_match('/^-/', $time)) { // Validatie: titel, date, time
+    if (empty($title) || strlen($title) > 100 || strtotime($date) < time() || preg_match('/^-/', $time)) {
         return false;
     }
     $stmt = $pdo->prepare("INSERT INTO Events (user_id, title, date, time, description, reminder, schedule_id) VALUES (:user, :title, :date, :time, :desc, :rem, :sched)");
@@ -175,7 +173,7 @@ function addEvent($user_id, $title, $date, $time, $description, $reminder, $sche
     return false;
 }
 
-// Functie om evenementen op te halen met shared friends
+// Evenementen ophalen
 function getEvents($user_id) {
     global $pdo;
     $stmt = $pdo->prepare("SELECT e.*, s.game_id FROM Events e LEFT JOIN Schedules s ON e.schedule_id = s.schedule_id WHERE e.user_id = :user ORDER BY date, time LIMIT 50");
@@ -186,12 +184,12 @@ function getEvents($user_id) {
         $stmt = $pdo->prepare("SELECT u.username FROM EventUserMap em JOIN Users u ON em.friend_id = u.user_id WHERE em.event_id = :event");
         $stmt->bindParam(':event', $event['event_id']);
         $stmt->execute();
-        $event['shared_with'] = $stmt->fetchAll();
+        $event['shared_with'] = $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
     return $events;
 }
 
-// Functie om evenement te bewerken
+// Evenement bewerken
 function editEvent($event_id, $title, $date, $time, $description, $reminder, $schedule_id, $shared_friends) {
     global $pdo;
     $stmt = $pdo->prepare("UPDATE Events SET title = :title, date = :date, time = :time, description = :desc, reminder = :rem, schedule_id = :sched WHERE event_id = :id");
@@ -203,7 +201,6 @@ function editEvent($event_id, $title, $date, $time, $description, $reminder, $sc
     $stmt->bindParam(':sched', $schedule_id);
     $stmt->bindParam(':id', $event_id);
     if ($stmt->execute()) {
-        // Update shared friends: delete old, add new
         $stmt = $pdo->prepare("DELETE FROM EventUserMap WHERE event_id = :id");
         $stmt->bindParam(':id', $event_id);
         $stmt->execute();
@@ -218,10 +215,9 @@ function editEvent($event_id, $title, $date, $time, $description, $reminder, $sc
     return false;
 }
 
-// Functie om evenement te verwijderen
+// Evenement verwijderen
 function deleteEvent($event_id) {
     global $pdo;
-    // Eerst shared maps verwijderen
     $stmt = $pdo->prepare("DELETE FROM EventUserMap WHERE event_id = :id");
     $stmt->bindParam(':id', $event_id);
     $stmt->execute();
@@ -230,10 +226,9 @@ function deleteEvent($event_id) {
     return $stmt->execute();
 }
 
-// Functie om logout uit te voeren
+// Uitloggen
 function logout() {
     session_destroy();
     header("Location: login.php");
     exit;
 }
-?>

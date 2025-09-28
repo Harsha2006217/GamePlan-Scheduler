@@ -1,19 +1,23 @@
 <?php
 require 'functions.php';
-if (!isLoggedIn()) header("Location: login.php");
+if (!isLoggedIn()) {
+    header("Location: login.php");
+    exit;
+}
 $user_id = $_SESSION['user_id'];
 $games = getGames();
-$friends_list = getFriends($user_id);
+$friends = getFriends($user_id);
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $game_id = $_POST['game_id'];
     $date = $_POST['date'];
     $time = $_POST['time'];
-    $friends = $_POST['friends'] ?? [];
-    if (addSchedule($user_id, $game_id, $date, $time, $friends)) {
-        $message = '<div class="alert alert-success">Schema toegevoegd.</div>';
+    $friends_selected = $_POST['friends'] ?? [];
+    if (addSchedule($user_id, $game_id, $date, $time, $friends_selected)) {
+        header("Location: schedules.php");
+        exit;
     } else {
-        $message = '<div class="alert alert-danger">Fout: controleer inputs (bijv. toekomstige datum, positieve tijd).</div>';
+        $message = '<div class="alert alert-danger">Fout bij toevoegen: controleer inputs.</div>';
     }
 }
 ?>
@@ -32,9 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php echo $message; ?>
         <form method="POST" onsubmit="return validateForm(this);">
             <div class="mb-3">
-                <label for="game_id" class="form-label">Game selecteren</label>
+                <label for="game_id" class="form-label">Game</label>
                 <select id="game_id" name="game_id" class="form-select" required>
-                    <option value="">Kies een game</option>
+                    <option value="">Kies game</option>
                     <?php foreach ($games as $game): ?>
                         <option value="<?php echo $game['game_id']; ?>"><?php echo htmlspecialchars($game['titel']); ?></option>
                     <?php endforeach; ?>
@@ -49,11 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="time" id="time" name="time" class="form-control" required>
             </div>
             <div class="mb-3">
-                <label>Vrienden selecteren:</label>
-                <?php foreach ($friends_list as $friend): ?>
+                <label>Vrienden (optioneel)</label>
+                <?php foreach ($friends as $friend): ?>
                     <div class="form-check">
                         <input type="checkbox" name="friends[]" value="<?php echo $friend['user_id']; ?>" class="form-check-input">
-                        <?php echo htmlspecialchars($friend['username']); ?>
+                        <label class="form-check-label"><?php echo htmlspecialchars($friend['username']); ?></label>
                     </div>
                 <?php endforeach; ?>
             </div>

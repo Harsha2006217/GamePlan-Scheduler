@@ -11,13 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $password = $_POST['password'];
     if (empty($username) || strlen($username) > 50) {
         $error = 'Username verplicht, max 50 tekens.';
-    } elseif (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Ongeldige email.';
     } elseif (strlen($password) < 6) {
         $error = 'Wachtwoord minstens 6 tekens.';
     } else {
         global $pdo;
-        // Check of email al bestaat
         $stmt = $pdo->prepare("SELECT * FROM Users WHERE email = :email");
         $stmt->bindParam(':email', $email);
         $stmt->execute();
@@ -30,10 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt->bindParam(':email', $email);
             $stmt->bindParam(':hash', $hash);
             if ($stmt->execute()) {
-                header("Location: login.php?msg=Registratie succesvol, log in.");
+                header("Location: login.php");
                 exit;
             } else {
-                $error = 'Registratie mislukt, probeer opnieuw.';
+                $error = 'Registratie mislukt.';
             }
         }
     }
@@ -51,7 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body>
     <div class="container mt-5">
         <h2>Registreren</h2>
-        <?php if ($error): ?><div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+        <?php if ($error): ?>
+            <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+        <?php endif; ?>
         <form method="POST" onsubmit="return validateForm(this);">
             <div class="mb-3">
                 <label for="username" class="form-label">Username</label>

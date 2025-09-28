@@ -1,7 +1,7 @@
-CREATE DATABASE gameplan_db;
+CREATE DATABASE IF NOT EXISTS gameplan_db;
 USE gameplan_db;
 
-CREATE TABLE Users (
+CREATE TABLE IF NOT EXISTS Users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
@@ -9,13 +9,13 @@ CREATE TABLE Users (
     last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE Games (
+CREATE TABLE IF NOT EXISTS Games (
     game_id INT AUTO_INCREMENT PRIMARY KEY,
     titel VARCHAR(100) NOT NULL,
     description TEXT
 );
 
-CREATE TABLE UserGames (
+CREATE TABLE IF NOT EXISTS UserGames (
     user_id INT,
     game_id INT,
     PRIMARY KEY (user_id, game_id),
@@ -23,7 +23,7 @@ CREATE TABLE UserGames (
     FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE
 );
 
-CREATE TABLE Friends (
+CREATE TABLE IF NOT EXISTS Friends (
     friend_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
     friend_user_id INT,
@@ -31,7 +31,7 @@ CREATE TABLE Friends (
     FOREIGN KEY (friend_user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
 
-CREATE TABLE Schedules (
+CREATE TABLE IF NOT EXISTS Schedules (
     schedule_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
     game_id INT,
@@ -42,7 +42,7 @@ CREATE TABLE Schedules (
     FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE
 );
 
-CREATE TABLE Events (
+CREATE TABLE IF NOT EXISTS Events (
     event_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
     title VARCHAR(100) NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE Events (
     FOREIGN KEY (schedule_id) REFERENCES Schedules(schedule_id) ON DELETE SET NULL
 );
 
-CREATE TABLE EventUserMap (
+CREATE TABLE IF NOT EXISTS EventUserMap (
     event_id INT,
     friend_id INT,
     PRIMARY KEY (event_id, friend_id),
@@ -63,12 +63,9 @@ CREATE TABLE EventUserMap (
     FOREIGN KEY (friend_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
 
--- Voorbeeld data
-INSERT INTO Users (username, email, password_hash) VALUES
-('testuser', 'test@example.com', '$2y$10$K.IwX0z0/0q0K.IwX0z0/0q0K.IwX0z0/0q0K.IwX0z0/0q0K.IwX0z0/');
+-- Voorbeeldgegevens
+INSERT INTO Users (username, email, password_hash) VALUES ('testuser', 'test@example.com', '$2y$10$examplehashedpassword');
 
-INSERT INTO Games (titel, description) VALUES
-('Fortnite', 'Popular battle royale game with building mechanics.'),
-('Minecraft', 'Sandbox game for building and exploration.');
+INSERT INTO Games (titel, description) VALUES ('Fortnite', 'Battle royale game'), ('Minecraft', 'Sandbox game');
 
-INSERT INTO UserGames (user_id, game_id) VALUES (1, 1), (1, 2);
+INSERT INTO UserGames (user_id, game_id) VALUES (1, 1);

@@ -1,13 +1,17 @@
 <?php
 require 'functions.php';
-if (!isLoggedIn()) header("Location: login.php");
+if (!isLoggedIn()) {
+    header("Location: login.php");
+    exit;
+}
 $user_id = $_SESSION['user_id'];
+$profile = getProfile($user_id);
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $friend_username = trim($_POST['friend_username']);
     if (empty($friend_username)) {
         $message = '<div class="alert alert-danger">Username verplicht.</div>';
-    } elseif ($friend_username == $profile['username']) {
+    } elseif ($friend_username === $profile['username']) {
         $message = '<div class="alert alert-danger">Je kunt jezelf niet toevoegen.</div>';
     } else {
         if (addFriend($user_id, $friend_username)) {
@@ -33,7 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php echo $message; ?>
         <form method="POST">
             <div class="mb-3">
-                <input type="text" name="friend_username" class="form-control" placeholder="Username van vriend" required>
+                <label for="friend_username" class="form-label">Username van vriend</label>
+                <input type="text" id="friend_username" name="friend_username" class="form-control" required>
             </div>
             <button type="submit" class="btn btn-primary">Toevoegen</button>
         </form>

@@ -1,6 +1,9 @@
 <?php
 require 'functions.php';
-if (!isLoggedIn()) header("Location: login.php");
+if (!isLoggedIn()) {
+    header("Location: login.php");
+    exit;
+}
 $user_id = $_SESSION['user_id'];
 $friends = getFriends($user_id);
 ?>
@@ -17,11 +20,17 @@ $friends = getFriends($user_id);
     <div class="container mt-5">
         <h2>Vriendenlijst</h2>
         <ul class="list-group">
-            <?php foreach ($friends as $friend): ?>
-                <li class="list-group-item"><?php echo htmlspecialchars($friend['username']); ?> - <?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'Online' : 'Offline'; ?></li>
-            <?php endforeach; ?>
+            <?php if (empty($friends)): ?>
+                <li class="list-group-item">Geen vrienden toegevoegd.</li>
+            <?php else: ?>
+                <?php foreach ($friends as $friend): ?>
+                    <li class="list-group-item">
+                        <?php echo htmlspecialchars($friend['username']); ?> - <span class="badge bg-<?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'success' : 'secondary'; ?>"><?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'Online' : 'Offline'; ?></span>
+                    </li>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </ul>
-        <a href="add_friend.php" class="btn btn-primary mt-2">Vriend toevoegen</a>
+        <a href="add_friend.php" class="btn btn-primary mt-3">Vriend toevoegen</a>
     </div>
 </body>
 </html>
