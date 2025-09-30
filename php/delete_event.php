@@ -8,10 +8,10 @@ $id = $_GET['id'] ?? 0;
 $user_id = $_SESSION['user_id'];
 global $pdo;
 $stmt = $pdo->prepare("SELECT * FROM Events WHERE event_id = :id AND user_id = :user");
-$stmt->bindParam(':id', $id);
-$stmt->bindParam(':user', $user_id);
+$stmt->bindParam(':id', $id, PDO::PARAM_INT);
+$stmt->bindParam(':user', $user_id, PDO::PARAM_INT);
 $stmt->execute();
-if ($stmt->fetch()) {
+if ($stmt->fetch(PDO::FETCH_ASSOC)) {
     deleteEvent($id);
 }
 header("Location: events.php");

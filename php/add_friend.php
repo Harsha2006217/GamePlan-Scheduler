@@ -8,7 +8,7 @@ $user_id = $_SESSION['user_id'];
 $profile = getProfile($user_id);
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $friend_username = trim($_POST['friend_username']);
+    $friend_username = trim($_POST['friend_username'] ?? '');
     if (empty($friend_username)) {
         $message = '<div class="alert alert-danger">Username verplicht.</div>';
     } elseif ($friend_username === $profile['username']) {
@@ -33,16 +33,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <div class="container mt-5">
-        <h2>Vriend toevoegen</h2>
+        <h2 class="text-center mb-4">Vriend toevoegen</h2>
         <?php echo $message; ?>
-        <form method="POST">
-            <div class="mb-3">
-                <label for="friend_username" class="form-label">Username van vriend</label>
-                <input type="text" id="friend_username" name="friend_username" class="form-control" required>
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <form method="POST" class="shadow p-4 rounded">
+                    <div class="mb-3">
+                        <label for="friend_username" class="form-label">Username van vriend</label>
+                        <input type="text" id="friend_username" name="friend_username" class="form-control" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">Toevoegen</button>
+                        <a href="index.php" class="btn btn-outline-primary btn-lg">Terug naar dashboard</a>
+                    </div>
+                </form>
             </div>
-            <button type="submit" class="btn btn-primary">Toevoegen</button>
-            <a href="index.php" class="btn btn-primary">Terug naar dashboard</a>
-        </form>
+        </div>
     </div>
 </body>
 </html>

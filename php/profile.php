@@ -5,20 +5,15 @@ if (!isLoggedIn()) {
     exit;
 }
 $user_id = $_SESSION['user_id'];
-$games = getGames();
-$favorite_games = getFavoriteGames($user_id);
+$profile = getProfile($user_id);
+$favorites = getFavoriteGames($user_id);
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    global $pdo;
-    $stmt = $pdo->prepare("DELETE FROM UserGames WHERE user_id = :user");
-    $stmt->bindParam(':user', $user_id);
-    $stmt->execute();
-    $selected_games = $_POST['favorite_games'] ?? [];
+    $selected_games = $_POST['games'] ?? [];
     foreach ($selected_games as $game_id) {
         addFavoriteGame($user_id, $game_id);
     }
-    $message = '<div class="alert alert-success">Favoriete games opgeslagen.</div>';
-    $favorite_games = getFavoriteGames($user_id);
+    $message = '<div class="alert alert-success">Favorieten bijgewerkt.</div>';
 }
 ?>
 <!DOCTYPE html>
@@ -32,18 +27,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <div class="container mt-5">
-        <h2>Profiel bewerken</h2>
+        <h2 class="text-center mb-4">Profiel</h2>
         <?php echo $message; ?>
-        <form method="POST">
-            <h3>Favoriete Games</h3>
-            <?php foreach ($games as $game): ?>
-                <div class="form-check">
-                    <input type="checkbox" name="favorite_games[]" value="<?php echo $game['game_id']; ?>" class="form-check-input" <?php if (in_array($game['titel'], array_column($favorite_games, 'titel'))) echo 'checked'; ?>>
-                    <label class="form-check-label"><?php echo htmlspecialchars($game['titel']); ?> - <?php echo htmlspecialchars($game['description']); ?></label>
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow mb-4">
+                    <div class="card-header bg-primary text-white">Gebruikersinformatie</div>
+                    <div class="card-body">
+                        <p><strong>Username:</strong> <?php echo htmlspecialchars($profile['username']); ?></p>
+                        <p><strong>Email:</strong> <?php echo htmlspecialchars($profile['email']); ?></p>
+                        <p><strong>Lid sinds:</strong> <?php echo htmlspecialchars($profile['created_at']); ?></p>
+                    </div>
                 </div>
-            <?php endforeach; ?>
-            <button type="submit" class="btn btn-primary mt-3">Opslaan</button>
-        </form>
+
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">Favoriete Games</div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label class="form-label">Selecteer favoriete games:</label>
+                                <?php $games = getGames(); ?>
+                                <?php foreach ($games as $game): ?>
+                                    <div class="form-check">
+                                        <input type="checkbox" name="games[]" value="<?php echo $game['game_id']; ?>" class="form-check-input" <?php if (in_array($game['titel'], array_column($favorites, 'titel'))) echo 'checked'; ?>>
+                                        <label class="form-check-label"><?php echo htmlspecialchars($game['titel']); ?> - <?php echo htmlspecialchars($game['description']); ?></label>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="submit" class="btn btn-success">Opslaan</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="mt-4 text-center">
+                    <a href="index.php" class="btn btn-outline-primary btn-lg">Terug naar dashboard</a>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>

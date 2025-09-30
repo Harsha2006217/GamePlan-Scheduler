@@ -18,20 +18,29 @@ $friends = getFriends($user_id);
 </head>
 <body>
     <div class="container mt-5">
-        <h2>Vriendenlijst</h2>
-        <ul class="list-group">
-            <?php if (empty($friends)): ?>
-                <li class="list-group-item">Geen vrienden toegevoegd.</li>
-            <?php else: ?>
-                <?php foreach ($friends as $friend): ?>
-                    <li class="list-group-item">
-                        <?php echo htmlspecialchars($friend['username']); ?> - <span class="badge bg-<?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'success' : 'secondary'; ?>"><?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'Online' : 'Offline'; ?></span>
-                    </li>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </ul>
-        <a href="add_friend.php" class="btn btn-primary mt-3">Vriend toevoegen</a>
-        <a href="index.php" class="btn btn-primary">Terug naar dashboard</a>
+        <h2 class="text-center mb-4">Vriendenlijst</h2>
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <ul class="list-group shadow-sm">
+                    <?php if (empty($friends)): ?>
+                        <li class="list-group-item text-center text-muted">Geen vrienden toegevoegd.</li>
+                    <?php else: ?>
+                        <?php foreach ($friends as $friend): ?>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><?php echo htmlspecialchars($friend['username']); ?></span>
+                                <span class="badge <?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'bg-success' : 'bg-secondary'; ?>">
+                                    <?php echo (strtotime($friend['last_activity']) > time() - 300) ? 'Online' : 'Offline'; ?>
+                                </span>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </ul>
+                <div class="mt-4 text-center">
+                    <a href="add_friend.php" class="btn btn-primary btn-lg me-2">Vriend toevoegen</a>
+                    <a href="index.php" class="btn btn-outline-primary btn-lg">Terug naar dashboard</a>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>
