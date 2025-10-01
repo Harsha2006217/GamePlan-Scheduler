@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $date = $_POST['date'] ?? '';
     $time = $_POST['time'] ?? '';
     $description = trim($_POST['description'] ?? '');
+    $event_type = $_POST['event_type'] ?? 'casual';
     $reminder = $_POST['reminder'] ?? '';
     $schedule_id = $_POST['schedule_id'] ?: null;
     $shared_friends = $_POST['shared_friends'] ?? [];
@@ -51,6 +52,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <div class="mb-3">
                         <label for="time" class="form-label">Tijd</label>
                         <input type="time" id="time" name="time" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="event_type" class="form-label">Type evenement</label>
+                        <select id="event_type" name="event_type" class="form-select" required>
+                            <option value="tournament">Toernooi</option>
+                            <option value="practice">Team Training</option>
+                            <option value="competition">Competitie</option>
+                            <option value="stream">Livestream</option>
+                            <option value="meetup">Meet-up</option>
+                            <option value="casual">Casual Gameplay</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="description" class="form-label">Beschrijving</label>

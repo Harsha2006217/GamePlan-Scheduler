@@ -1,53 +1,993 @@
 <?php
 /**
- * GamePlan Scheduler - Professional Core Functions Library
- * 
- * Comprehensive business logic functions with enterprise-level validation,
- * security measures, error handling, and performance optimization.
+ * GamePlan Scheduler - Core Functions Library
+ * Advanced Professional Gaming Schedule Management System
  * 
  * @author Harsha Kanaparthi
- * @version 2.0 - Professional Edition
- * @date 2025-09-30
- * @security Enterprise-grade implementation
+ * @version 2.1 Professional Edition
+ * @date September 30, 2025
+ * @description Comprehensive function library for all GamePlan operations
  */
 
-require_once 'db.php';
+// Security headers and session configuration
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.cookie_secure', isset($_SERVER['HTTPS']));
+    ini_set('session.use_strict_mode', 1);
+    session_start();
+}
 
-// ==================== AUTHENTICATION & USER MANAGEMENT ====================
+// Regenerate session ID to prevent session fixation
+if (!isset($_SESSION['csrf_token'])) {
+    session_regenerate_id(true);
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Include database connection
+require_once __DIR__ . '/db.php';
+
+// ===================== SECURITY FUNCTIONS =====================
 
 /**
- * Register a new user with comprehensive validation and security
- * 
- * @param string $username Username (3-50 characters, alphanumeric + underscore/dash)
- * @param string $email Valid email address
- * @param string $password Password (min 8 chars, complexity requirements)
- * @return array Result with success/error information and user data
+ * Generate CSRF token for form protection
+ * @return string Secure CSRF token
  */
-function registerUser($username, $email, $password) {
+function generateCSRFToken() {
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * Validate CSRF token to prevent CSRF attacks
+ * @param string $token Token to validate
+ * @return bool True if valid, false otherwise
+ */
+function validateCSRFToken($token) {
+    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
+}
+
+/**
+ * Update RSVP status for an event
+ * @param int $event_id Event ID
+ * @param int $user_id User ID
+ * @param string $response RSVP response (accepted, declined, maybe)
+ * @return bool True on success, false on failure
+ */
+function updateRSVPStatus($event_id, $user_id, $response) {
+    global $pdo;
     try {
-        $db = getDB();
+        $stmt = $pdo->prepare("
+            INSERT INTO EventUserMap (event_id, friend_id, response_status, responded_at)
+            VALUES (:event_id, :user_id, :response, NOW())
+            ON DUPLICATE KEY UPDATE 
+                response_status = :response,
+                responded_at = NOW()
+        ");
         
-        // Comprehensive input validation
-        $validation = validateUserRegistration($username, $email, $password);
-        if (!$validation['valid']) {
-            return ['success' => false, 'error' => $validation['error']];
+        $result = $stmt->execute([
+            'event_id' => $event_id,
+            'user_id' => $user_id,
+            'response' => $response
+        ]);
+
+        if ($result) {
+            // Notify event creator about the RSVP response
+            $event = getEventDetails($event_id);
+            $user = getUserById($user_id);
+            $message = $user['username'] . ' heeft ' . getRSVPStatusText($response) . ' voor je evenement "' . $event['title'] . '"';
+            createNotification($event['user_id'], 'RSVP Update', $message, 'event_update', $event_id);
+        }
+
+        return $result;
+    } catch (PDOException $e) {
+        error_log("RSVP Update Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Check for schedule conflicts
+ * @param int $user_id User ID to check conflicts for
+ * @param string $date Date of the schedule
+ * @param string $time Time of the schedule
+ * @param array $friend_ids Array of friend IDs to check conflicts for
+ * @param int $game_id Game ID to get session duration
+ * @param int $exclude_schedule_id Optional schedule ID to exclude from check (for edit operations)
+ * @return array Array of conflicts found or empty array if no conflicts
+ */
+function checkScheduleConflicts($user_id, $date, $time, $friend_ids, $game_id, $exclude_schedule_id = null) {
+    global $pdo;
+    $conflicts = [];
+    
+    try {
+        // Get game session duration
+        $stmt = $pdo->prepare("SELECT average_session_time FROM Games WHERE game_id = :game_id");
+        $stmt->execute(['game_id' => $game_id]);
+        $game = $stmt->fetch(PDO::FETCH_ASSOC);
+        $duration = $game['average_session_time'] ?? 120; // Default to 2 hours if not set
+        
+        // Calculate time window
+        $start_datetime = $date . ' ' . $time;
+        $end_datetime = date('Y-m-d H:i:s', strtotime($start_datetime . ' + ' . $duration . ' minutes'));
+        
+        // Check user's own schedules
+        $sql = "SELECT s.*, g.titel as game_name 
+                FROM Schedules s
+                JOIN Games g ON s.game_id = g.game_id
+                WHERE s.user_id = :user_id 
+                AND s.status != 'deleted'
+                AND ((s.date = :date AND s.time BETWEEN 
+                    TIME(DATE_SUB(:start_time, INTERVAL $duration MINUTE)) 
+                    AND TIME(DATE_ADD(:end_time, INTERVAL $duration MINUTE))))";
+                    
+        if ($exclude_schedule_id) {
+            $sql .= " AND s.schedule_id != :exclude_id";
         }
         
-        // Rate limiting check
-        if (!RateLimiter::check('register')) {
-            return ['success' => false, 'error' => 'Too many registration attempts. Please try again later.'];
+        $stmt = $pdo->prepare($sql);
+        $params = [
+            'user_id' => $user_id,
+            'date' => $date,
+            'start_time' => $start_datetime,
+            'end_time' => $end_datetime
+        ];
+        
+        if ($exclude_schedule_id) {
+            $params['exclude_id'] = $exclude_schedule_id;
         }
         
-        $db->beginTransaction();
+        $stmt->execute($params);
+        $user_conflicts = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        try {
-            // Check for existing username (case-insensitive)
-            $stmt = $db->prepare("SELECT user_id FROM Users WHERE LOWER(username) = LOWER(?)");
-            $stmt->execute([$username]);
-            if ($stmt->fetch()) {
-                $db->rollback();
-                return ['success' => false, 'error' => 'Username already exists. Please choose a different username.'];
+        if ($user_conflicts) {
+            $conflicts['user'] = [
+                'user_id' => $user_id,
+                'conflicts' => $user_conflicts
+            ];
+        }
+        
+        // Check friends' schedules
+        if (!empty($friend_ids)) {
+            foreach ($friend_ids as $friend_id) {
+                $stmt = $pdo->prepare($sql);
+                $params['user_id'] = $friend_id;
+                $stmt->execute($params);
+                $friend_conflicts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if ($friend_conflicts) {
+                    // Get friend's username
+                    $stmt = $pdo->prepare("SELECT username FROM Users WHERE user_id = :friend_id");
+                    $stmt->execute(['friend_id' => $friend_id]);
+                    $friend = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    $conflicts['friends'][] = [
+                        'user_id' => $friend_id,
+                        'username' => $friend['username'],
+                        'conflicts' => $friend_conflicts
+                    ];
+                }
             }
+        }
+        
+        return $conflicts;
+    } catch (PDOException $e) {
+        error_log("Schedule Conflict Check Error: " . $e->getMessage());
+        return ['error' => 'Error checking schedule conflicts'];
+    }
+}
+
+/**
+ * Create a new notification
+ */
+/**
+ * Get suggested friends based on common game interests
+ * @param int $user_id User ID to get suggestions for
+ * @return array Array of suggested users
+ */
+function getSuggestedFriends($user_id) {
+    global $pdo;
+    try {
+        $sql = "
+            SELECT 
+                u.user_id,
+                u.username,
+                COUNT(DISTINCT ug.game_id) as common_games
+            FROM Users u
+            JOIN UserGames ug ON u.user_id = ug.user_id
+            JOIN UserGames myGames ON myGames.user_id = :user_id
+                AND myGames.game_id = ug.game_id
+            WHERE u.user_id != :user_id
+            AND u.user_id NOT IN (
+                SELECT friend_id FROM Friends WHERE user_id = :user_id
+                UNION
+                SELECT user_id FROM Friends WHERE friend_id = :user_id
+            )
+            GROUP BY u.user_id, u.username
+            HAVING common_games > 0
+            ORDER BY common_games DESC
+            LIMIT 5
+        ";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['user_id' => $user_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get Suggested Friends Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Get popular users based on friend count and activity
+ * @param int $user_id User ID to exclude from results
+ * @return array Array of popular users
+ */
+function getPopularUsers($user_id) {
+    global $pdo;
+    try {
+        $sql = "
+            SELECT 
+                u.user_id,
+                u.username,
+                (SELECT COUNT(*) FROM Friends WHERE user_id = u.user_id OR friend_id = u.user_id) as friend_count,
+                (SELECT COUNT(*) FROM Schedules WHERE user_id = u.user_id AND status != 'deleted') as activity_count
+            FROM Users u
+            WHERE u.user_id != :user_id
+            AND u.user_id NOT IN (
+                SELECT friend_id FROM Friends WHERE user_id = :user_id
+                UNION
+                SELECT user_id FROM Friends WHERE friend_id = :user_id
+            )
+            ORDER BY friend_count DESC, activity_count DESC
+            LIMIT 5
+        ";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['user_id' => $user_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get Popular Users Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Add friend by user ID (more secure than username)
+ * @param int $user_id User ID
+ * @param int $friend_id Friend's user ID
+ * @return bool Success status
+ */
+/**
+ * Update user's gaming status
+ * @param int $user_id User ID
+ * @param string $status_type Status type (online, playing, break, looking)
+ * @param int|null $game_id Optional game ID if status is 'playing'
+ * @param string|null $status_message Optional status message
+ * @return bool Success status
+ */
+function updateUserStatus($user_id, $status_type, $game_id = null, $status_message = null) {
+    global $pdo;
+    try {
+        $sql = "
+            INSERT INTO UserStatus (user_id, status_type, game_id, status_message)
+            VALUES (:user_id, :status_type, :game_id, :status_message)
+            ON DUPLICATE KEY UPDATE
+                status_type = :status_type,
+                game_id = :game_id,
+                status_message = :status_message,
+                last_updated = CURRENT_TIMESTAMP
+        ";
+        
+        $stmt = $pdo->prepare($sql);
+        return $stmt->execute([
+            'user_id' => $user_id,
+            'status_type' => $status_type,
+            'game_id' => $game_id,
+            'status_message' => $status_message
+        ]);
+    } catch (PDOException $e) {
+        error_log("Update User Status Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Get user's current status
+ * @param int $user_id User ID
+ * @return array|null User status information
+ */
+function getUserStatus($user_id) {
+    global $pdo;
+    try {
+        $sql = "
+            SELECT 
+                us.*,
+                g.titel as game_name,
+                g.image_url as game_image
+            FROM UserStatus us
+            LEFT JOIN Games g ON us.game_id = g.game_id
+            WHERE us.user_id = :user_id
+        ";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['user_id' => $user_id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get User Status Error: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Get status of all friends
+ * @param int $user_id User ID
+ * @return array Array of friend statuses
+ */
+function getFriendsStatus($user_id) {
+    global $pdo;
+    try {
+        $sql = "
+            SELECT 
+                u.user_id,
+                u.username,
+                us.status_type,
+                us.game_id,
+                us.status_message,
+                us.last_updated,
+                g.titel as game_name,
+                g.image_url as game_image
+            FROM Friends f
+            JOIN Users u ON (f.friend_id = u.user_id OR f.user_id = u.user_id)
+            LEFT JOIN UserStatus us ON u.user_id = us.user_id
+            LEFT JOIN Games g ON us.game_id = g.game_id
+            WHERE (f.user_id = :user_id OR f.friend_id = :user_id)
+            AND u.user_id != :user_id
+            ORDER BY 
+                FIELD(us.status_type, 'playing', 'looking', 'online', 'break', 'offline'),
+                us.last_updated DESC
+        ";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['user_id' => $user_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get Friends Status Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Update user's last activity timestamp
+ * @param int $user_id User ID
+ */
+function updateLastActivity($user_id) {
+    global $pdo;
+    try {
+        // Update last activity in Users table
+        $stmt = $pdo->prepare("
+            UPDATE Users 
+            SET last_activity = CURRENT_TIMESTAMP 
+            WHERE user_id = :user_id
+        ");
+        $stmt->execute(['user_id' => $user_id]);
+        
+        // Update status to 'online' if currently offline
+        $stmt = $pdo->prepare("
+            INSERT INTO UserStatus (user_id, status_type)
+            VALUES (:user_id, 'online')
+            ON DUPLICATE KEY UPDATE
+                status_type = CASE 
+                    WHEN status_type = 'offline' THEN 'online'
+                    ELSE status_type
+                END,
+                last_updated = CASE 
+                    WHEN status_type = 'offline' THEN CURRENT_TIMESTAMP
+                    ELSE last_updated
+                END
+        ");
+        $stmt->execute(['user_id' => $user_id]);
+    } catch (PDOException $e) {
+        error_log("Update Last Activity Error: " . $e->getMessage());
+    }
+}
+
+function addFriendById($user_id, $friend_id) {
+    global $pdo;
+    try {
+        // Check if friendship already exists
+        $stmt = $pdo->prepare("
+            SELECT 1 FROM Friends 
+            WHERE (user_id = :user_id AND friend_id = :friend_id)
+            OR (user_id = :friend_id AND friend_id = :user_id)
+        ");
+        $stmt->execute([
+            'user_id' => $user_id,
+            'friend_id' => $friend_id
+        ]);
+        
+        if ($stmt->fetch()) {
+            return false; // Already friends
+        }
+        
+        // Add friend
+        $stmt = $pdo->prepare("
+            INSERT INTO Friends (user_id, friend_id, created_at)
+            VALUES (:user_id, :friend_id, NOW())
+        ");
+        $success = $stmt->execute([
+            'user_id' => $user_id,
+            'friend_id' => $friend_id
+        ]);
+        
+        if ($success) {
+            // Create notification for the new friend
+            $user = getUserById($user_id);
+            createNotification(
+                $friend_id,
+                'Nieuwe Vriendschap',
+                $user['username'] . ' heeft je toegevoegd als vriend',
+                'friend_request'
+            );
+        }
+        
+        return $success;
+    } catch (PDOException $e) {
+        error_log("Add Friend Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+function createNotification($user_id, $title, $message, $type, $reference_id = null, $expire_at = null) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO Notifications (user_id, title, message, type, reference_id, expire_at)
+            VALUES (:user_id, :title, :message, :type, :reference_id, :expire_at)
+        ");
+        
+        return $stmt->execute([
+            'user_id' => $user_id,
+            'title' => $title,
+            'message' => $message,
+            'type' => $type,
+            'reference_id' => $reference_id,
+            'expire_at' => $expire_at
+        ]);
+    } catch (PDOException $e) {
+        error_log("Notification Creation Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Get notifications for a user
+ */
+function getNotifications($user_id, $limit = 10) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            SELECT * FROM Notifications 
+            WHERE user_id = :user_id 
+            AND (expire_at IS NULL OR expire_at > NOW())
+            ORDER BY created_at DESC 
+            LIMIT :limit
+        ");
+        $stmt->bindValue(':user_id', $user_id, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get Notifications Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Mark a notification as read
+ */
+function markNotificationRead($notification_id, $user_id) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            UPDATE Notifications 
+            SET is_read = 1 
+            WHERE notification_id = :id 
+            AND user_id = :user_id
+        ");
+        
+        return $stmt->execute([
+            'id' => $notification_id,
+            'user_id' => $user_id
+        ]);
+    } catch (PDOException $e) {
+        error_log("Mark Notification Read Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Get user details by ID
+ */
+function getUserById($user_id) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM Users WHERE user_id = ?");
+        $stmt->execute([$user_id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get User Error: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Get event details by ID
+ */
+function getEventDetails($event_id) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM Events WHERE event_id = ?");
+        $stmt->execute([$event_id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get Event Error: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Get readable text for RSVP status
+ */
+function getRSVPStatusText($status) {
+    switch ($status) {
+        case 'accepted':
+            return '"Ja" geantwoord';
+        case 'declined':
+            return '"Nee" geantwoord';
+        case 'maybe':
+            return '"Misschien" geantwoord';
+        default:
+            return 'niet geantwoord';
+    }
+}
+
+/**
+ * Get all friends for a user
+ */
+function getFriends($user_id) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            SELECT f.friend_id, u.user_id, u.username, u.last_activity 
+            FROM Friends f 
+            JOIN Users u ON f.friend_user_id = u.user_id 
+            WHERE f.user_id = :user_id 
+            AND f.status = 'accepted'
+            ORDER BY u.username
+        ");
+        $stmt->execute(['user_id' => $user_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get Friends Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Get pending friend requests for a user
+ */
+function getPendingFriendRequests($user_id) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            SELECT f.friend_id, u.user_id, u.username, f.created_at
+            FROM Friends f 
+            JOIN Users u ON f.user_id = u.user_id 
+            WHERE f.friend_user_id = :user_id 
+            AND f.status = 'pending'
+            ORDER BY f.created_at DESC
+        ");
+        $stmt->execute(['user_id' => $user_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get Pending Requests Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Get sent friend requests from a user
+ */
+function getSentFriendRequests($user_id) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            SELECT f.friend_id, u.user_id, u.username, f.created_at
+            FROM Friends f 
+            JOIN Users u ON f.friend_user_id = u.user_id 
+            WHERE f.user_id = :user_id 
+            AND f.status = 'pending'
+            ORDER BY f.created_at DESC
+        ");
+        $stmt->execute(['user_id' => $user_id]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get Sent Requests Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Accept a friend request
+ */
+function acceptFriendRequest($request_id, $user_id) {
+    global $pdo;
+    try {
+        // Start transaction
+        $pdo->beginTransaction();
+        
+        // Get the friend request details
+        $stmt = $pdo->prepare("
+            SELECT * FROM Friends 
+            WHERE friend_id = :request_id 
+            AND friend_user_id = :user_id 
+            AND status = 'pending'
+        ");
+        $stmt->execute([
+            'request_id' => $request_id,
+            'user_id' => $user_id
+        ]);
+        $request = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($request) {
+            // Update the request status
+            $stmt = $pdo->prepare("
+                UPDATE Friends 
+                SET status = 'accepted', updated_at = NOW() 
+                WHERE friend_id = :request_id
+            ");
+            $stmt->execute(['request_id' => $request_id]);
+            
+            // Create reverse friendship
+            $stmt = $pdo->prepare("
+                INSERT INTO Friends (user_id, friend_user_id, status, created_at)
+                VALUES (:user_id, :friend_user_id, 'accepted', NOW())
+            ");
+            $stmt->execute([
+                'user_id' => $user_id,
+                'friend_user_id' => $request['user_id']
+            ]);
+            
+            // Create notification for the requester
+            $friend = getUserById($request['user_id']);
+            $user = getUserById($user_id);
+            createNotification(
+                $request['user_id'],
+                'Vriendschapsverzoek geaccepteerd',
+                $user['username'] . ' heeft je vriendschapsverzoek geaccepteerd!',
+                'friend_request'
+            );
+            
+            $pdo->commit();
+            return true;
+        }
+        
+        $pdo->rollBack();
+        return false;
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        error_log("Accept Friend Request Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Decline a friend request
+ */
+function declineFriendRequest($request_id, $user_id) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            DELETE FROM Friends 
+            WHERE friend_id = :request_id 
+            AND friend_user_id = :user_id 
+            AND status = 'pending'
+        ");
+        return $stmt->execute([
+            'request_id' => $request_id,
+            'user_id' => $user_id
+        ]);
+    } catch (PDOException $e) {
+        error_log("Decline Friend Request Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Block a user
+ */
+function blockUser($friend_id, $user_id) {
+    global $pdo;
+    try {
+        $pdo->beginTransaction();
+        
+        // Update existing friendship to blocked
+        $stmt = $pdo->prepare("
+            UPDATE Friends 
+            SET status = 'blocked', updated_at = NOW() 
+            WHERE (friend_id = :friend_id AND friend_user_id = :user_id)
+               OR (user_id = :user_id AND friend_user_id = (
+                   SELECT user_id FROM Friends WHERE friend_id = :friend_id
+               ))
+        ");
+        $stmt->execute([
+            'friend_id' => $friend_id,
+            'user_id' => $user_id
+        ]);
+        
+        $pdo->commit();
+        return true;
+    } catch (PDOException $e) {
+        $pdo->rollBack();
+        error_log("Block User Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Cancel a sent friend request
+ */
+function cancelFriendRequest($request_id, $user_id) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            DELETE FROM Friends 
+            WHERE friend_id = :request_id 
+            AND user_id = :user_id 
+            AND status = 'pending'
+        ");
+        return $stmt->execute([
+            'request_id' => $request_id,
+            'user_id' => $user_id
+        ]);
+    } catch (PDOException $e) {
+        error_log("Cancel Friend Request Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Get game by ID
+ */
+function getGameById($game_id) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM Games WHERE game_id = ?");
+        $stmt->execute([$game_id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        error_log("Get Game Error: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Add a new game
+ */
+function addGame($title, $description, $genre, $platform, $release_year, $max_players, $min_players, 
+                $average_session_time, $rating, $developer, $image_url = null) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO Games (titel, description, genre, platform, release_year, max_players, min_players, 
+                             average_session_time, rating, developer, image_url)
+            VALUES (:title, :description, :genre, :platform, :release_year, :max_players, :min_players,
+                    :average_session_time, :rating, :developer, :image_url)
+        ");
+        
+        return $stmt->execute([
+            'title' => $title,
+            'description' => $description,
+            'genre' => $genre,
+            'platform' => $platform,
+            'release_year' => $release_year,
+            'max_players' => $max_players,
+            'min_players' => $min_players,
+            'average_session_time' => $average_session_time,
+            'rating' => $rating,
+            'developer' => $developer,
+            'image_url' => $image_url
+        ]);
+    } catch (PDOException $e) {
+        error_log("Add Game Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Edit an existing game
+ */
+function editGame($game_id, $title, $description, $genre, $platform, $release_year, $max_players, $min_players, 
+                 $average_session_time, $rating, $developer, $image_url = null) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            UPDATE Games 
+            SET titel = :title,
+                description = :description,
+                genre = :genre,
+                platform = :platform,
+                release_year = :release_year,
+                max_players = :max_players,
+                min_players = :min_players,
+                average_session_time = :average_session_time,
+                rating = :rating,
+                developer = :developer,
+                image_url = :image_url
+            WHERE game_id = :game_id
+        ");
+        
+        return $stmt->execute([
+            'game_id' => $game_id,
+            'title' => $title,
+            'description' => $description,
+            'genre' => $genre,
+            'platform' => $platform,
+            'release_year' => $release_year,
+            'max_players' => $max_players,
+            'min_players' => $min_players,
+            'average_session_time' => $average_session_time,
+            'rating' => $rating,
+            'developer' => $developer,
+            'image_url' => $image_url
+        ]);
+    } catch (PDOException $e) {
+        error_log("Edit Game Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Add or update a user's game rating
+ */
+function rateGame($user_id, $game_id, $rating) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO UserGames (user_id, game_id, rating, added_at)
+            VALUES (:user_id, :game_id, :rating, NOW())
+            ON DUPLICATE KEY UPDATE rating = :rating
+        ");
+        
+        return $stmt->execute([
+            'user_id' => $user_id,
+            'game_id' => $game_id,
+            'rating' => $rating
+        ]);
+    } catch (PDOException $e) {
+        error_log("Rate Game Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Add a game to user's collection
+ */
+function addGameToUser($user_id, $game_id, $skill_level = 'Beginner') {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO UserGames (user_id, game_id, skill_level, is_currently_playing, added_at)
+            VALUES (:user_id, :game_id, :skill_level, 1, NOW())
+            ON DUPLICATE KEY UPDATE 
+                is_currently_playing = 1,
+                skill_level = :skill_level
+        ");
+        
+        return $stmt->execute([
+            'user_id' => $user_id,
+            'game_id' => $game_id,
+            'skill_level' => $skill_level
+        ]);
+    } catch (PDOException $e) {
+        error_log("Add Game To User Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Remove a game from user's currently playing list
+ */
+function removeGameFromUser($user_id, $game_id) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("
+            UPDATE UserGames 
+            SET is_currently_playing = 0
+            WHERE user_id = :user_id 
+            AND game_id = :game_id
+        ");
+        
+        return $stmt->execute([
+            'user_id' => $user_id,
+            'game_id' => $game_id
+        ]);
+    } catch (PDOException $e) {
+        error_log("Remove Game From User Error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Check if user is an admin
+ */
+function isAdmin() {
+    return isset($_SESSION['user_id']) && $_SESSION['user_id'] == 1; // Simple admin check, can be enhanced
+}
+
+/**
+ * Sanitize user input to prevent XSS attacks
+ * @param mixed $input Input to sanitize
+ * @return mixed Sanitized input
+ */
+function sanitizeInput($input) {
+    if (is_array($input)) {
+        return array_map('sanitizeInput', $input);
+    }
+    return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * Validate email format with comprehensive checks
+ * @param string $email Email to validate
+ * @return bool True if valid email
+ */
+function validateEmail($email) {
+    return filter_var($email, FILTER_VALIDATE_EMAIL) && 
+           !preg_match('/[^a-zA-Z0-9@._-]/', $email) &&
+           strlen($email) <= 100;
+}
+
+/**
+ * Check password strength requirements
+ * @param string $password Password to check
+ * @return array Result with success boolean and message
+ */
+function validatePassword($password) {
+    $result = ['success' => false, 'message' => ''];
+    
+    if (strlen($password) < 8) {
+        $result['message'] = 'Password must be at least 8 characters long';
+        return $result;
+    }
+    
+    if (!preg_match('/[A-Z]/', $password)) {
+        $result['message'] = 'Password must contain at least one uppercase letter';
+        return $result;
+    }
+    
+    if (!preg_match('/[a-z]/', $password)) {
+        $result['message'] = 'Password must contain at least one lowercase letter';
+        return $result;
+    }
+    
+    if (!preg_match('/[0-9]/', $password)) {
+        $result['message'] = 'Password must contain at least one number';
+        return $result;
+    }
+    
+    if (!preg_match('/[^a-zA-Z0-9]/', $password)) {
+        $result['message'] = 'Password must contain at least one special character';
+        return $result;
+    }
+    
+    $result['success'] = true;
+    $result['message'] = 'Password meets all requirements';
+    return $result;
+}
             
             // Check for existing email
             $stmt = $db->prepare("SELECT user_id FROM Users WHERE LOWER(email) = LOWER(?)");
@@ -1247,8 +2187,18 @@ function deleteSchedule($userId, $scheduleId) {
         }
         
         // Delete schedule
+        // Start transaction since we need to delete from multiple tables
+        $pdo->beginTransaction();
+        
+        // First delete from TemplateSchedules if exists
+        $stmt = $pdo->prepare("DELETE FROM TemplateSchedules WHERE schedule_id = ?");
+        $stmt->execute([$scheduleId]);
+        
+        // Then delete from Schedules
         $stmt = $pdo->prepare("DELETE FROM Schedules WHERE schedule_id = ? AND user_id = ?");
         $stmt->execute([$scheduleId, $userId]);
+        
+        $pdo->commit();
         
         if ($stmt->rowCount() > 0) {
             logEvent("User $userId deleted schedule $scheduleId", 'INFO');
@@ -1506,11 +2456,21 @@ function getUpcomingActivities($userId, $limit = 5) {
         
         // Get upcoming schedules
         $stmt = $pdo->prepare("
-            SELECT 'schedule' as type, s.schedule_id as id, g.name as title, s.scheduled_time as date_time, s.description
+            SELECT 
+                'schedule' as type, 
+                s.schedule_id as id, 
+                g.titel as title, 
+                s.date as date_time, 
+                s.description,
+                t.template_id,
+                t.name as template_name,
+                ts.generated_for_date
             FROM Schedules s
             JOIN Games g ON g.game_id = s.game_id
-            WHERE s.user_id = ? AND s.scheduled_time > NOW() AND s.status = 'scheduled'
-            ORDER BY s.scheduled_time ASC
+            LEFT JOIN TemplateSchedules ts ON s.schedule_id = ts.schedule_id
+            LEFT JOIN ScheduleTemplates t ON ts.template_id = t.template_id
+            WHERE s.user_id = ? AND s.date >= CURDATE()
+            ORDER BY s.date ASC, s.time ASC
             LIMIT ?
         ");
         $stmt->execute([$userId, $limit]);
@@ -1582,4 +2542,203 @@ function userOwnsResource($userId, $table, $idColumn, $resourceId) {
         return false;
     }
 }
+
+// ===================== ADDITIONAL AUTHENTICATION FUNCTIONS =====================
+
+/**
+ * Check if user is currently logged in
+ */
+function isLoggedIn() {
+    return isset($_SESSION['user_id']) && 
+           !empty($_SESSION['user_id']) && 
+           isset($_SESSION['username']) &&
+           isset($_SESSION['login_time']) &&
+           (time() - ($_SESSION['session_started'] ?? 0)) < 3600; // 1 hour timeout
+}
+
+/**
+ * Logout user securely
+ */
+function logoutUser() {
+    try {
+        // Log the logout event
+        if (isset($_SESSION['username'])) {
+            logEvent("User logged out: " . $_SESSION['username'], 'INFO');
+        }
+        
+        // Clear all session variables
+        $_SESSION = array();
+        
+        // Destroy session cookie
+        if (isset($_COOKIE[session_name()])) {
+            setcookie(session_name(), '', time() - 42000, '/');
+        }
+        
+        // Clear remember me cookie
+        if (isset($_COOKIE['gameplan_remember'])) {
+            setcookie('gameplan_remember', '', time() - 42000, '/');
+        }
+        
+        // Destroy session
+        session_destroy();
+        
+        return true;
+    } catch (Exception $e) {
+        error_log("Logout error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Get current user information
+ */
+function getCurrentUser() {
+    if (!isLoggedIn()) {
+        return null;
+    }
+    
+    return [
+        'user_id' => $_SESSION['user_id'],
+        'username' => $_SESSION['username'],
+        'email' => $_SESSION['email'],
+        'login_time' => $_SESSION['login_time'] ?? time(),
+        'session_started' => $_SESSION['session_started'] ?? time()
+    ];
+}
+
+/**
+ * Update user's last activity timestamp
+ */
+function updateUserActivity() {
+    if (isLoggedIn()) {
+        $_SESSION['last_activity'] = time();
+        
+        // Update database every 5 minutes to avoid too many writes
+        if (!isset($_SESSION['last_db_update']) || (time() - $_SESSION['last_db_update']) > 300) {
+            global $pdo;
+            try {
+                $stmt = $pdo->prepare("UPDATE Users SET last_activity = CURRENT_TIMESTAMP WHERE user_id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $_SESSION['last_db_update'] = time();
+            } catch (PDOException $e) {
+                error_log("Error updating user activity: " . $e->getMessage());
+            }
+        }
+    }
+}
+
+/**
+ * Check if user has specific permission
+ */
+function hasPermission($permission) {
+    // Basic implementation - can be expanded for role-based permissions
+    return isLoggedIn();
+}
+
+/**
+ * Get database connection using the new DatabaseConnection class
+ */
+function getDBConnection() {
+    return DatabaseConnection::getInstance()->getConnection();
+}
+
+/**
+ * Register new user with comprehensive validation
+ */
+function registerNewUser($userData) {
+    try {
+        $db = getDBConnection();
+        
+        // Validate required fields
+        $required = ['username', 'email', 'password', 'first_name', 'last_name'];
+        foreach ($required as $field) {
+            if (empty($userData[$field])) {
+                return [
+                    'success' => false,
+                    'message' => "Please fill in all required fields. Missing: " . ucfirst($field)
+                ];
+            }
+        }
+        
+        // Validate password strength
+        $passwordValidation = validatePassword($userData['password']);
+        if (!$passwordValidation['success']) {
+            return [
+                'success' => false,
+                'message' => $passwordValidation['message']
+            ];
+        }
+        
+        // Check if username exists
+        $stmt = $db->prepare("SELECT user_id FROM Users WHERE username = ?");
+        $stmt->execute([$userData['username']]);
+        if ($stmt->fetch()) {
+            return [
+                'success' => false,
+                'message' => 'Username already exists. Please choose a different username.'
+            ];
+        }
+        
+        // Check if email exists
+        $stmt = $db->prepare("SELECT user_id FROM Users WHERE email = ?");
+        $stmt->execute([$userData['email']]);
+        if ($stmt->fetch()) {
+            return [
+                'success' => false,
+                'message' => 'Email address already registered. Please use a different email or try logging in.'
+            ];
+        }
+        
+        // Hash password
+        $password_hash = password_hash($userData['password'], PASSWORD_ARGON2ID);
+        
+        // Generate verification token
+        $verification_token = bin2hex(random_bytes(32));
+        
+        // Insert new user
+        $stmt = $db->prepare("
+            INSERT INTO Users (
+                username, email, password_hash, first_name, last_name, 
+                date_of_birth, timezone, verification_token, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ");
+        
+        $result = $stmt->execute([
+            $userData['username'],
+            $userData['email'],
+            $password_hash,
+            $userData['first_name'],
+            $userData['last_name'],
+            $userData['date_of_birth'] ?? null,
+            $userData['timezone'] ?? 'America/New_York',
+            $verification_token
+        ]);
+        
+        if ($result) {
+            $user_id = $db->lastInsertId();
+            
+            // Log successful registration
+            logEvent("New user registered: " . $userData['username'] . " (ID: $user_id)", 'INFO');
+            
+            return [
+                'success' => true,
+                'message' => 'Registration successful! You can now log in with your credentials.',
+                'user_id' => $user_id
+            ];
+        } else {
+            return [
+                'success' => false,
+                'message' => 'Registration failed. Please try again.'
+            ];
+        }
+        
+    } catch (Exception $e) {
+        error_log("Registration error: " . $e->getMessage());
+        return [
+            'success' => false,
+            'message' => 'An error occurred during registration. Please try again.'
+        ];
+    }
+}
+
 ?>
