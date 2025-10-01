@@ -1,1051 +1,703 @@
 <?php
 /**
- * GamePlan Scheduler - Enterprise Database Management System
+ * GamePlan Scheduler - Enhanced Professional Database Management System
  *
  * Advanced PDO database management system with comprehensive security measures,
  * performance optimization, connection pooling, and robust error handling.
  *
  * Features:
  * - Secure connection handling with automatic retry
- * - Prepared statement caching
- * - Connection pooling for optimal performance
- * - Advanced error logging and monitoring
- * - Automatic failover and recovery
- * - Query performance analytics
+ * - Enhanced session management with security measures
+ * - Advanced input validation and sanitization
+ * - Comprehensive error logging and monitoring
+ * - Professional user authentication system
+ * - Rate limiting and security controls
  * 
  * @package     GamePlan
  * @subpackage  Database
  * @author      Harsha Kanaparthi
- * @version     3.0 Enterprise Edition
+ * @version     3.0 Professional Edition
  * @date        October 1, 2025
  * @copyright   2025 GamePlan Solutions
  * @license     Proprietary
  */
 
-
-
-// ===================== SECURITY CONFIGURATION =====================
-
-// Security Constants
-define('MAX_CONNECTION_ATTEMPTS', 3);
-define('CONNECTION_TIMEOUT', 10);
-define('STMT_CACHE_SIZE', 100);
-define('MAX_POOL_SIZE', 10);
-define('MIN_POOL_SIZE', 2);
-
-// Prevent direct script access
+// Prevent direct script access for security
 if (!defined('GAMEPLAN_ACCESS')) {
     define('GAMEPLAN_ACCESS', true);
+}
+
+// Security check - prevent direct access
+if (basename($_SERVER['PHP_SELF']) === basename(__FILE__)) {
+    header('HTTP/1.0 403 Forbidden');
+    exit('Direct access to this file is not allowed for security reasons.');
+}
+
+// ===================== SECURITY AND CONFIGURATION CONSTANTS =====================
+
+// Enhanced security configuration
+define('MAX_CONNECTION_ATTEMPTS', 3);
+define('CONNECTION_TIMEOUT', 10);
+define('SESSION_TIMEOUT', 1800); // 30 minutes
+define('MAX_LOGIN_ATTEMPTS', 5);
+define('LOGIN_LOCKOUT_TIME', 900); // 15 minutes
+define('CSRF_TOKEN_LENGTH', 32);
+define('APP_VERSION', '3.0.0');
+
+// Environment detection for secure configuration
+$environment = ($_SERVER['SERVER_NAME'] === 'localhost' || 
+                $_SERVER['SERVER_NAME'] === '127.0.0.1') ? 'development' : 'production';
+define('ENVIRONMENT', $environment);
+
+// ===================== DATABASE CONFIGURATION =====================
+
+// Development Configuration (Local XAMPP)
+if (ENVIRONMENT === 'development') {
+    define('DB_HOST', 'localhost');
+    define('DB_NAME', 'gameplan_db');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+    define('DB_CHARSET', 'utf8mb4');
+    define('DB_PORT', 3306);
     
-    // Additional security measures
-    if (basename($_SERVER['PHP_SELF']) === basename(__FILE__)) {
-        header('HTTP/1.0 403 Forbidden');
-        exit('Direct access forbidden');
+    // Development settings for debugging
+    define('DEBUG_MODE', true);
+    define('LOG_ERRORS', true);
+    define('DISPLAY_ERRORS', false); // Never show errors to users, even in dev
+    
+    // Development error reporting
+    error_reporting(E_ALL);
+    ini_set('display_errors', 0); // Security: never show errors to users
+    ini_set('log_errors', 1);
+    ini_set('error_log', __DIR__ . '/../logs/error_dev.log');
+}
+// Production Configuration
+else {
+    define('DB_HOST', 'localhost');
+    define('DB_NAME', 'gameplan_db');
+    define('DB_USER', 'gameplan_user');
+    define('DB_PASS', 'GamePlan_Secure_2025!');
+    define('DB_CHARSET', 'utf8mb4');
+    define('DB_PORT', 3306);
+    
+    // Production settings for security
+    define('DEBUG_MODE', false);
+    define('LOG_ERRORS', true);
+    define('DISPLAY_ERRORS', false);
+    
+    // Production error reporting - minimal for security
+    error_reporting(E_ERROR | E_WARNING | E_PARSE);
+    ini_set('display_errors', 0);
+    ini_set('log_errors', 1);
+    ini_set('error_log', __DIR__ . '/../logs/error_prod.log');
+}
+
+// ===================== ENHANCED SESSION SECURITY =====================
+
+// Configure session security settings
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_samesite', 'Strict');
+ini_set('session.cookie_secure', 0); // Set to 1 for HTTPS in production
+ini_set('session.gc_maxlifetime', SESSION_TIMEOUT);
+ini_set('session.use_strict_mode', 1);
+ini_set('session.sid_length', 48);
+ini_set('session.sid_bits_per_character', 6);
+
+// Start session with enhanced security
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+    
+    // Regenerate session ID for security (prevent session fixation)
+    if (!isset($_SESSION['session_regenerated'])) {
+        session_regenerate_id(true);
+        $_SESSION['session_regenerated'] = true;
+        $_SESSION['session_started'] = time();
+        $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $_SESSION['user_agent'] = substr($_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 0, 200);
     }
 }
 
-
-
-// Environment-based configuration// Environment-based configuration
-
-$environment = $_SERVER['SERVER_NAME'] === 'localhost' ? 'development' : 'production';$environment = $_SERVER['SERVER_NAME'] === 'localhost' ? 'development' : 'production';
-
-
-
-// ===================== DATABASE CONFIGURATION =====================// ===================== DATABASE CONFIGURATION =====================
-
-
-
-// Development Configuration// Development Configuration
-
-if ($environment === 'development') {if ($environment === 'development') {
-
-    define('DB_HOST', 'localhost');    define('DB_HOST', 'localhost');
-
-    define('DB_NAME', 'gameplan_db');    define('DB_NAME', 'gameplan_db');
-
-    define('DB_USER', 'root');    define('DB_USER', 'root');
-
-    define('DB_PASS', '');    define('DB_PASS', '');
-
-    define('DB_CHARSET', 'utf8mb4');    define('DB_CHARSET', 'utf8mb4');
-
-    define('DB_PORT', 3306);    define('DB_PORT', 3306);
-
+// Enhanced session timeout and security checks
+if (isset($_SESSION['last_activity'])) {
+    if (time() - $_SESSION['last_activity'] > SESSION_TIMEOUT) {
+        session_unset();
+        session_destroy();
         
-
-    // Development settings    // Development settings
-
-    define('DEBUG_MODE', true);    define('DEBUG_MODE', true);
-
-    define('LOG_ERRORS', true);    define('LOG_ERRORS', true);
-
-    define('DISPLAY_ERRORS', true);    define('DISPLAY_ERRORS', true);
-
-        
-
-    // Set error reporting for development    // Set error reporting for development
-
-    error_reporting(E_ALL);    error_reporting(E_ALL);
-
-    ini_set('display_errors', 1);    ini_set('display_errors', 1);
-
-    ini_set('log_errors', 1);    ini_set('log_errors', 1);
-
-}}
-
-
-
-// Production Configuration// Production Configuration
-
-else {else {
-
-    define('DB_HOST', 'localhost');    define('DB_HOST', 'localhost');
-
-    define('DB_NAME', 'gameplan_db');    define('DB_NAME', 'gameplan_db');
-
-    define('DB_USER', 'gameplan_user');    define('DB_USER', 'gameplan_user');
-
-    define('DB_PASS', 'GamePlan_Secure_2025!');    define('DB_PASS', 'GamePlan_Secure_2025!');
-
-    define('DB_CHARSET', 'utf8mb4');    define('DB_CHARSET', 'utf8mb4');
-
-    define('DB_PORT', 3306);    define('DB_PORT', 3306);
-
-        
-
-    // Production settings    // Production settings
-
-    define('DEBUG_MODE', false);    define('DEBUG_MODE', false);
-
-    define('LOG_ERRORS', true);    define('LOG_ERRORS', true);
-
-    define('DISPLAY_ERRORS', false);    define('DISPLAY_ERRORS', false);
-
-        
-
-    // Secure error reporting for production    // Secure error reporting for production
-
-    error_reporting(E_ERROR | E_WARNING | E_PARSE);    error_reporting(E_ERROR | E_WARNING | E_PARSE);
-
-    ini_set('display_errors', 0);    ini_set('display_errors', 0);
-
-    ini_set('log_errors', 1);    ini_set('log_errors', 1);
-
-    ini_set('error_log', __DIR__ . '/../logs/error.log');    ini_set('error_log', __DIR__ . '/../logs/error.log');
-
-}}
-
-
-
-// ===================== ADVANCED PDO CONNECTION CLASS =====================// Set error reporting based on environment
-
-if (ENVIRONMENT === 'development') {
-
-class DatabaseConnection {    error_reporting(E_ALL);
-
-    private static $instance = null;    ini_set('display_errors', 1);
-
-    private $pdo;    ini_set('log_errors', 1);
-
-    private $connection_count = 0;} else {
-
-    private $query_count = 0;    error_reporting(0);
-
-    private $error_log = [];    ini_set('display_errors', 0);
-
-        ini_set('log_errors', 1);
-
-    /**}
-
-     * Private constructor for singleton pattern
-
-     */// Configure session security
-
-    private function __construct() {ini_set('session.cookie_httponly', 1);
-
-        $this->connect();ini_set('session.use_only_cookies', 1);
-
-    }ini_set('session.cookie_samesite', 'Strict');
-
-    ini_set('session.cookie_secure', 0); // Set to 1 for HTTPS in production
-
-    /**ini_set('session.gc_maxlifetime', SESSION_TIMEOUT);
-
-     * Get singleton instance of database connection
-
-     * @return DatabaseConnection// Start session with security checks
-
-     */if (session_status() === PHP_SESSION_NONE) {
-
-    public static function getInstance() {    session_start();
-
-        if (self::$instance === null) {}
-
-            self::$instance = new self();
-
-        }// Regenerate session ID for security (prevent session fixation)
-
-        return self::$instance;if (!isset($_SESSION['session_regenerated'])) {
-
-    }    session_regenerate_id(true);
-
-        $_SESSION['session_regenerated'] = true;
-
-    /**    $_SESSION['session_started'] = time();
-
-     * Establish secure PDO connection with advanced options}
-
-     */
-
-    private function connect() {// Check session timeout
-
-        try {if (isset($_SESSION['last_activity'])) {
-
-            $dsn = sprintf(    if (time() - $_SESSION['last_activity'] > SESSION_TIMEOUT) {
-
-                "mysql:host=%s;port=%d;dbname=%s;charset=%s",        session_unset();
-
-                DB_HOST,        session_destroy();
-
-                DB_PORT,        if (isset($_GET['ajax'])) {
-
-                DB_NAME,            http_response_code(401);
-
-                DB_CHARSET            echo json_encode(['error' => 'Session expired']);
-
-            );            exit();
-
-                    } else {
-
-            $options = [            header('Location: login.php?timeout=1');
-
-                // Security options            exit();
-
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,        }
-
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,    }
-
-                PDO::ATTR_EMULATE_PREPARES => false,}
-
-                PDO::ATTR_STRINGIFY_FETCHES => false,
-
-                $_SESSION['last_activity'] = time();
-
-                // Performance options
-
-                PDO::ATTR_PERSISTENT => false, // Disable for better security// Initialize global database connection
-
-                PDO::ATTR_TIMEOUT => 30,global $pdo;
-
-                
-
-                // MySQL specific optionstry {
-
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . DB_CHARSET . " COLLATE utf8mb4_unicode_ci",    // Create secure PDO connection
-
-                PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
-
-                PDO::MYSQL_ATTR_FOUND_ROWS => true,    
-
-                    $options = [
-
-                // SSL options for production        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-
-                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-
-            ];        PDO::ATTR_EMULATE_PREPARES   => false,
-
-                    PDO::ATTR_PERSISTENT         => false, // Disabled for better security
-
-            $this->pdo = new PDO($dsn, DB_USER, DB_PASS, $options);        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . DB_CHARSET . " COLLATE utf8mb4_unicode_ci",
-
-            $this->connection_count++;        PDO::ATTR_TIMEOUT            => 10,
-
-                    PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true
-
-            // Set SQL mode for strict data integrity    ];
-
-            $this->pdo->exec("SET sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");    
-
-                $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-
-            // Set timezone    
-
-            $this->pdo->exec("SET time_zone = '+01:00'");    // Set timezone
-
-                $pdo->exec("SET time_zone = '+01:00'"); // Amsterdam timezone
-
-            if (DEBUG_MODE) {    
-
-                error_log("GamePlan DB: Successfully connected to database (Connection #{$this->connection_count})");    // Update user activity if logged in
-
-            }    if (isset($_SESSION['user_id']) && is_numeric($_SESSION['user_id'])) {
-
-                    $stmt = $pdo->prepare("UPDATE Users SET last_activity = CURRENT_TIMESTAMP WHERE user_id = ? AND is_active = 1");
-
-        } catch (PDOException $e) {        $stmt->execute([$_SESSION['user_id']]);
-
-            $this->handleConnectionError($e);    }
-
-        }    
-
-    }} catch (PDOException $e) {
-
-        // Log database connection error securely
-
-    /**    error_log("Database Connection Error: " . $e->getMessage() . " - " . date('Y-m-d H:i:s'));
-
-     * Handle connection errors with proper logging and fallback    
-
-     * @param PDOException $e    // Show user-friendly error message
-
-     */    if (ENVIRONMENT === 'development') {
-
-    private function handleConnectionError(PDOException $e) {        die("<div style='background:#f8d7da;color:#721c24;padding:20px;border:1px solid #f5c6cb;border-radius:5px;font-family:Arial,sans-serif;'>
-
-        $error_message = "Database Connection Failed: " . $e->getMessage();                <h3>Database Connection Error</h3>
-
-        $this->error_log[] = [                <p><strong>Error:</strong> " . htmlspecialchars($e->getMessage()) . "</p>
-
-            'timestamp' => date('Y-m-d H:i:s'),                <p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . "</p>
-
-            'error' => $error_message,                <p><strong>Line:</strong> " . $e->getLine() . "</p>
-
-            'code' => $e->getCode(),             </div>");
-
-            'file' => $e->getFile(),    } else {
-
-            'line' => $e->getLine()        die("<div style='background:#f8d7da;color:#721c24;padding:20px;border:1px solid #f5c6cb;border-radius:5px;font-family:Arial,sans-serif;text-align:center;'>
-
-        ];                <h3>Service Temporarily Unavailable</h3>
-
-                        <p>We're experiencing technical difficulties. Please try again later.</p>
-
-        // Log error                <p>If the problem persists, please contact support.</p>
-
-        error_log($error_message);             </div>");
-
-            }
-
-        if (DEBUG_MODE) {}
-
-            throw new Exception("Database connection failed: " . $e->getMessage(), $e->getCode());
-
-        } else {// ===================== CORE UTILITY FUNCTIONS =====================
-
-            // In production, show generic error
-
-            throw new Exception("Database service temporarily unavailable. Please try again later.", 500);/**
-
-        } * Check if user is logged in with enhanced security
-
-    } * 
-
-     * @return bool True if user is logged in and session is valid
-
-    /** */
-
-     * Get PDO connection objectfunction isLoggedIn() {
-
-     * @return PDO    if (!isset($_SESSION['user_id']) || !isset($_SESSION['username']) || !isset($_SESSION['session_started'])) {
-
-     */        return false;
-
-    public function getConnection() {    }
-
-        // Check if connection is still alive    
-
-        if ($this->pdo === null) {    // Check if session is too old (additional security)
-
-            $this->connect();    if (time() - $_SESSION['session_started'] > (SESSION_TIMEOUT * 2)) {
-
-        }        logout();
-
-                return false;
-
-        try {    }
-
-            $this->pdo->query('SELECT 1');    
-
-        } catch (PDOException $e) {    return true;
-
-            // Reconnect if connection is lost}
-
-            $this->connect();
-
-        }/**
-
-         * Require login for protected pages
-
-        return $this->pdo; * 
-
-    } * @param string $redirect_to Optional redirect URL after login
-
-     */
-
-    /**function requireLogin($redirect_to = null) {
-
-     * Execute prepared statement with error handling    if (!isLoggedIn()) {
-
-     * @param string $sql SQL query        $redirect_url = 'login.php';
-
-     * @param array $params Parameters for prepared statement        if ($redirect_to) {
-
-     * @return PDOStatement            $redirect_url .= '?redirect=' . urlencode($redirect_to);
-
-     */        } elseif (!empty($_SERVER['REQUEST_URI'])) {
-
-    public function executeQuery($sql, $params = []) {            $redirect_url .= '?redirect=' . urlencode($_SERVER['REQUEST_URI']);
-
-        try {        }
-
-            $stmt = $this->pdo->prepare($sql);        
-
-            $stmt->execute($params);        header('Location: ' . $redirect_url);
-
-            $this->query_count++;        exit();
-
-                }
-
-            if (DEBUG_MODE) {}
-
-                error_log("GamePlan DB: Executed query (#{$this->query_count}): " . $sql);
-
-                if (!empty($params)) {/**
-
-                    error_log("GamePlan DB: Parameters: " . json_encode($params)); * Get current authenticated user information
-
-                } * 
-
-            } * @return array|null User data or null if not logged in
-
-             */
-
-            return $stmt;function getCurrentUser() {
-
-                global $pdo;
-
-        } catch (PDOException $e) {    
-
-            $this->handleQueryError($e, $sql, $params);    if (!isLoggedIn()) {
-
-            throw $e;        return null;
-
-        }    }
-
-    }    
-
-        try {
-
-    /**        $stmt = $pdo->prepare("SELECT user_id, username, email, created_at, last_activity FROM Users WHERE user_id = ? AND is_active = 1");
-
-     * Handle query errors with detailed logging        $stmt->execute([$_SESSION['user_id']]);
-
-     * @param PDOException $e        return $stmt->fetch();
-
-     * @param string $sql    } catch (PDOException $e) {
-
-     * @param array $params        error_log("Error fetching current user: " . $e->getMessage());
-
-     */        return null;
-
-    private function handleQueryError(PDOException $e, $sql, $params) {    }
-
-        $error_details = [}
-
-            'timestamp' => date('Y-m-d H:i:s'),
-
-            'error' => $e->getMessage(),/**
-
-            'code' => $e->getCode(), * Sanitize input data to prevent XSS
-
-            'sql' => $sql, * 
-
-            'params' => $params, * @param string $data Input data to sanitize
-
-            'file' => $e->getFile(), * @return string Sanitized data
-
-            'line' => $e->getLine(), */
-
-            'trace' => DEBUG_MODE ? $e->getTraceAsString() : 'Hidden in production'function sanitizeInput($data) {
-
-        ];    if ($data === null) return '';
-
-            $data = trim($data);
-
-        $this->error_log[] = $error_details;    $data = stripslashes($data);
-
-            $data = htmlspecialchars($data, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        // Log error with context    return $data;
-
-        $log_message = sprintf(}
-
-            "GamePlan DB Query Error: %s | SQL: %s | Params: %s",
-
-            $e->getMessage(),/**
-
-            $sql, * Validate email format with comprehensive checks
-
-            json_encode($params) * 
-
-        ); * @param string $email Email to validate
-
-         * @return bool True if valid email
-
-        error_log($log_message); */
-
-        function validateEmail($email) {
-
-        // Additional security logging for potential SQL injection attempts    if (empty($email)) return false;
-
-        if (strpos(strtolower($sql), 'union') !== false ||     
-
-            strpos(strtolower($sql), 'drop') !== false ||    // Basic format validation
-
-            strpos(strtolower($sql), 'truncate') !== false) {    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-
-            error_log("SECURITY ALERT: Potential SQL injection attempt detected: " . $log_message);        return false;
-
-        }    }
-
-    }    
-
-        // Additional checks
-
-    /**    if (strlen($email) > 100) return false;
-
-     * Begin database transaction    if (strpos($email, '..') !== false) return false; // Consecutive dots
-
-     */    
-
-    public function beginTransaction() {    return true;
-
-        return $this->pdo->beginTransaction();}
-
+        if (isset($_GET['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Session expired', 'redirect' => 'login.php']);
+            exit();
+        } else {
+            header('Location: login.php?timeout=1');
+            exit();
+        }
     }
+}
 
-    /**
+// Session hijacking protection
+if (isset($_SESSION['ip_address']) && $_SESSION['ip_address'] !== ($_SERVER['REMOTE_ADDR'] ?? 'unknown')) {
+    session_unset();
+    session_destroy();
+    header('Location: login.php?security=1');
+    exit();
+}
 
-    /** * Validate username with enhanced rules
+$_SESSION['last_activity'] = time();
 
-     * Commit database transaction * 
+// ===================== ENHANCED DATABASE CONNECTION =====================
 
-     */ * @param string $username Username to validate
+// Global database connection variable
+global $pdo;
 
-    public function commit() { * @return array Result with 'valid' boolean and 'error' message
-
-        return $this->pdo->commit(); */
-
-    }function validateUsername($username) {
-
-        if (empty($username)) {
-
-    /**        return ['valid' => false, 'error' => 'Username is required'];
-
-     * Rollback database transaction    }
-
-     */    
-
-    public function rollback() {    if (strlen($username) < 3) {
-
-        return $this->pdo->rollback();        return ['valid' => false, 'error' => 'Username must be at least 3 characters'];
-
-    }    }
-
-        
-
-    /**    if (strlen($username) > 50) {
-
-     * Get last insert ID        return ['valid' => false, 'error' => 'Username must be less than 50 characters'];
-
-     * @return string    }
-
-     */    
-
-    public function lastInsertId() {    if (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
-
-        return $this->pdo->lastInsertId();        return ['valid' => false, 'error' => 'Username can only contain letters, numbers, and underscores'];
-
-    }    }
-
-        
-
-    /**    // Check for inappropriate words (basic filter)
-
-     * Check if we're in a transaction    $blocked_words = ['admin', 'administrator', 'root', 'system', 'null', 'undefined'];
-
-     * @return bool    if (in_array(strtolower($username), $blocked_words)) {
-
-     */        return ['valid' => false, 'error' => 'This username is not allowed'];
-
-    public function inTransaction() {    }
-
-        return $this->pdo->inTransaction();    
-
-    }    return ['valid' => true, 'error' => ''];
-
-    }
-
-    /**
-
-     * Get connection statistics/**
-
-     * @return array * Generate secure CSRF token
-
-     */ * 
-
-    public function getStats() { * @return string Generated token
-
-        return [ */
-
-            'connection_count' => $this->connection_count,function generateCSRFToken() {
-
-            'query_count' => $this->query_count,    if (empty($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time']) || 
-
-            'error_count' => count($this->error_log),        (time() - $_SESSION['csrf_token_time']) > 3600) { // Regenerate every hour
-
-            'in_transaction' => $this->inTransaction(),        $_SESSION['csrf_token'] = bin2hex(random_bytes(CSRF_TOKEN_LENGTH));
-
-            'server_info' => $this->pdo->getAttribute(PDO::ATTR_SERVER_INFO),        $_SESSION['csrf_token_time'] = time();
-
-            'client_version' => $this->pdo->getAttribute(PDO::ATTR_CLIENT_VERSION),    }
-
-            'connection_status' => $this->pdo->getAttribute(PDO::ATTR_CONNECTION_STATUS)    return $_SESSION['csrf_token'];
-
-        ];}
-
-    }
-
-    /**
-
-    /** * Verify CSRF token with timing attack protection
-
-     * Get error log * 
-
-     * @return array * @param string $token Token to verify
-
-     */ * @return bool True if valid token
-
-    public function getErrorLog() { */
-
-        return $this->error_log;function verifyCSRFToken($token) {
-
-    }    if (empty($_SESSION['csrf_token']) || empty($token)) {
-
-            return false;
-
-    /**    }
-
-     * Prevent cloning of singleton    
-
-     */    // Use hash_equals to prevent timing attacks
-
-    private function __clone() {}    return hash_equals($_SESSION['csrf_token'], $token);
-
-    }
-
-    /**
-
-     * Prevent unserialization of singleton/**
-
-     */ * Secure logout with complete session cleanup
-
-    public function __wakeup() { */
-
-        throw new Exception("Cannot unserialize singleton");function logout() {
-
-    }    global $pdo;
-
-        
-
-    /**    // Log the logout event
-
-     * Close connection on destruction    if (isset($_SESSION['user_id'])) {
-
-     */        try {
-
-    public function __destruct() {            logEvent("User logged out: " . ($_SESSION['username'] ?? 'Unknown'), 'INFO');
-
-        if (DEBUG_MODE && $this->query_count > 0) {        } catch (Exception $e) {
-
-            error_log("GamePlan DB: Connection closed. Total queries executed: {$this->query_count}");            error_log("Error logging logout event: " . $e->getMessage());
-
-        }        }
-
-        $this->pdo = null;    }
-
-    }    
-
-}    // Clear all session variables
-
-    $_SESSION = array();
-
-// ===================== HELPER FUNCTIONS =====================    
-
-    // Delete session cookie
-
-/**    if (ini_get("session.use_cookies")) {
-
- * Get database connection instance        $params = session_get_cookie_params();
-
- * @return PDO        setcookie(session_name(), '', time() - 42000,
-
- */            $params["path"], $params["domain"],
-
-function getDBConnection() {            $params["secure"], $params["httponly"]
-
-    return DatabaseConnection::getInstance()->getConnection();        );
-
-}    }
-
+try {
+    // Create secure PDO connection with enhanced options
+    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET . ";port=" . DB_PORT;
     
-
-/**    // Destroy session
-
- * Execute a prepared statement with error handling    session_destroy();
-
- * @param string $sql SQL query}
-
- * @param array $params Parameters
-
- * @return PDOStatement/**
-
- */ * Log application events with rotation
-
-function executeQuery($sql, $params = []) { * 
-
-    return DatabaseConnection::getInstance()->executeQuery($sql, $params); * @param string $message Log message
-
-} * @param string $level Log level (INFO, WARNING, ERROR, CRITICAL)
-
- * @param array $context Additional context data
-
-/** */
-
- * Get database connection for legacy code compatibilityfunction logEvent($message, $level = 'INFO', $context = []) {
-
- * @return PDO    $timestamp = date('Y-m-d H:i:s');
-
- */    $user_id = $_SESSION['user_id'] ?? 'guest';
-
-function getDB() {    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-
-    return getDBConnection();    $user_agent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 0, 100);
-
-}    
-
-    $context_str = !empty($context) ? ' | Context: ' . json_encode($context) : '';
-
-/**    
-
- * Test database connection and return status    $log_message = "[$timestamp] [$level] [User: $user_id] [IP: $ip] $message$context_str" . PHP_EOL;
-
- * @return array Connection test results    
-
- */    $log_file = __DIR__ . '/../logs/app_' . date('Y-m-d') . '.log';
-
-function testDatabaseConnection() {    
-
-    try {    // Create logs directory if it doesn't exist
-
-        $db = getDBConnection();    $log_dir = dirname($log_file);
-
-        $stmt = $db->query("SELECT VERSION() as version, NOW() as current_time, DATABASE() as database_name");    if (!is_dir($log_dir)) {
-
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);        mkdir($log_dir, 0755, true);
-
-            }
-
-        $stats = DatabaseConnection::getInstance()->getStats();    
-
-            // Write to log file
-
-        return [    error_log($log_message, 3, $log_file);
-
-            'success' => true,    
-
-            'message' => 'Database connection successful',    // Also log errors to system log
-
-            'mysql_version' => $result['version'],    if (in_array($level, ['ERROR', 'CRITICAL'])) {
-
-            'current_time' => $result['current_time'],        error_log("GamePlan [$level]: $message");
-
-            'database_name' => $result['database_name'],    }
-
-            'connection_stats' => $stats}
-
-        ];
-
-        /**
-
-    } catch (Exception $e) { * Set flash message for user feedback
-
-        return [ * 
-
-            'success' => false, * @param string $type Message type (success, error, warning, info)
-
-            'message' => 'Database connection failed: ' . $e->getMessage(), * @param string $message Message content
-
-            'error_details' => DEBUG_MODE ? $e->getTrace() : 'Hidden in production' */
-
-        ];function setFlashMessage($type, $message) {
-
-    }    if (!isset($_SESSION['flash_messages'])) {
-
-}        $_SESSION['flash_messages'] = [];
-
-    }
-
-/**    
-
- * Execute database migrations or updates    $_SESSION['flash_messages'][] = [
-
- * @param string $migration_file Path to migration file        'type' => $type,
-
- * @return array Migration result        'message' => sanitizeInput($message),
-
- */        'timestamp' => time()
-
-function executeMigration($migration_file) {    ];
-
-    if (!file_exists($migration_file)) {}
-
-        return ['success' => false, 'message' => 'Migration file not found'];
-
-    }/**
-
-     * Get and clear flash messages
-
-    try { * 
-
-        $db = getDBConnection(); * @return array Array of flash messages
-
-        $sql = file_get_contents($migration_file); */
-
-        function getFlashMessages() {
-
-        // Split by semicolon and execute each statement    $messages = $_SESSION['flash_messages'] ?? [];
-
-        $statements = array_filter(array_map('trim', explode(';', $sql)));    unset($_SESSION['flash_messages']);
-
-            
-
-        $db->beginTransaction();    // Filter out old messages (older than 5 minutes)
-
-            $filtered_messages = array_filter($messages, function($msg) {
-
-        foreach ($statements as $statement) {        return (time() - $msg['timestamp']) < 300;
-
-            if (!empty($statement)) {    });
-
-                $db->exec($statement);    
-
-            }    return array_values($filtered_messages);
-
-        }}
-
-        
-
-        $db->commit();/**
-
-         * Rate limiting for login attempts
-
-        return [ * 
-
-            'success' => true, * @param string $identifier IP address or username
-
-            'message' => 'Migration executed successfully', * @return bool True if rate limit exceeded
-
-            'statements_executed' => count($statements) */
-
-        ];function isRateLimited($identifier) {
-
-            $key = 'rate_limit_' . md5($identifier);
-
-    } catch (Exception $e) {    
-
-        if ($db->inTransaction()) {    if (!isset($_SESSION[$key])) {
-
-            $db->rollback();        $_SESSION[$key] = ['attempts' => 0, 'last_attempt' => 0];
-
-        }    }
-
-            
-
-        return [    $data = $_SESSION[$key];
-
-            'success' => false,    
-
-            'message' => 'Migration failed: ' . $e->getMessage(),    // Reset counter if lockout time has passed
-
-            'error_details' => DEBUG_MODE ? $e->getTrace() : 'Hidden in production'    if (time() - $data['last_attempt'] > LOGIN_LOCKOUT_TIME) {
-
-        ];        $_SESSION[$key] = ['attempts' => 0, 'last_attempt' => 0];
-
-    }        return false;
-
-}    }
-
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+        PDO::ATTR_PERSISTENT         => false, // Security: disabled for better security
+        PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . DB_CHARSET . " COLLATE utf8mb4_unicode_ci",
+        PDO::ATTR_TIMEOUT            => CONNECTION_TIMEOUT,
+        PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
+        PDO::ATTR_STRINGIFY_FETCHES  => false,
+        PDO::MYSQL_ATTR_FOUND_ROWS   => true
+    ];
     
+    $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+    
+    // Set timezone and SQL mode for consistency
+    $pdo->exec("SET time_zone = '+01:00'"); // Amsterdam timezone
+    $pdo->exec("SET sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'");
+    
+    // Update user activity if logged in
+    if (isset($_SESSION['user_id']) && is_numeric($_SESSION['user_id'])) {
+        $stmt = $pdo->prepare("UPDATE Users SET last_activity = CURRENT_TIMESTAMP WHERE user_id = ? AND is_active = 1");
+        $stmt->execute([$_SESSION['user_id']]);
+    }
+    
+    // Log successful connection in development
+    if (DEBUG_MODE) {
+        error_log("GamePlan DB: Successfully connected to database - " . date('Y-m-d H:i:s'));
+    }
+    
+} catch (PDOException $e) {
+    // Log database connection error securely
+    error_log("GamePlan DB Connection Error: " . $e->getMessage() . " - " . date('Y-m-d H:i:s'));
+    
+    // Show user-friendly error message based on environment
+    if (ENVIRONMENT === 'development') {
+        die("<div style='background:#f8d7da;color:#721c24;padding:20px;border:1px solid #f5c6cb;border-radius:5px;font-family:Arial,sans-serif;margin:20px;'
+                <h3><i class='fas fa-exclamation-triangle'></i> Database Connection Error</h3>
+                <p><strong>Error Message:</strong> " . htmlspecialchars($e->getMessage()) . "</p>
+                <p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . "</p>
+                <p><strong>Line:</strong> " . $e->getLine() . "</p>
+                <p><strong>Solution:</strong> Check if XAMPP is running and database exists.</p>
+             </div>");
+    } else {
+        die("<div style='background:#f8d7da;color:#721c24;padding:20px;border:1px solid #f5c6cb;border-radius:5px;font-family:Arial,sans-serif;text-align:center;margin:20px;'
+                <h3><i class='fas fa-tools'></i> Service Temporarily Unavailable</h3>
+                <p>We're experiencing technical difficulties connecting to our database.</p>
+                <p>Please try again in a few minutes. If the problem persists, please contact support.</p>
+                <p><small>Error ID: " . uniqid() . "</small></p>
+             </div>");
+    }
+}
 
-/**    return $data['attempts'] >= MAX_LOGIN_ATTEMPTS;
+// ===================== ENHANCED UTILITY FUNCTIONS =====================
 
- * Create database backup}
+/**
+ * Enhanced login check with comprehensive security validation
+ * 
+ * @return bool True if user is logged in and session is valid
+ */
+function isLoggedIn() {
+    // Check if essential session variables exist
+    if (!isset($_SESSION['user_id']) || !isset($_SESSION['username']) || !isset($_SESSION['session_started'])) {
+        return false;
+    }
+    
+    // Check if session is too old (additional security layer)
+    if (time() - $_SESSION['session_started'] > (SESSION_TIMEOUT * 2)) {
+        logout();
+        return false;
+    }
+    
+    // Validate user_id is numeric (prevent injection)
+    if (!is_numeric($_SESSION['user_id'])) {
+        logout();
+        return false;
+    }
+    
+    return true;
+}
 
- * @param string $backup_path Path to save backup
-
- * @return array Backup result/**
-
- */ * Record login attempt
-
-function createDatabaseBackup($backup_path = null) { * 
-
-    try { * @param string $identifier IP address or username
-
-        if (!$backup_path) { * @param bool $success Whether the attempt was successful
-
-            $backup_path = __DIR__ . '/../backups/gameplan_backup_' . date('Y-m-d_H-i-s') . '.sql'; */
-
-        }function recordLoginAttempt($identifier, $success = false) {
-
-            $key = 'rate_limit_' . md5($identifier);
-
-        // Ensure backup directory exists    
-
-        $backup_dir = dirname($backup_path);    if (!isset($_SESSION[$key])) {
-
-        if (!is_dir($backup_dir)) {        $_SESSION[$key] = ['attempts' => 0, 'last_attempt' => 0];
-
-            mkdir($backup_dir, 0755, true);    }
-
-        }    
-
-            if ($success) {
-
-        // Use mysqldump for backup        // Reset on successful login
-
-        $command = sprintf(        unset($_SESSION[$key]);
-
-            'mysqldump --host=%s --port=%d --user=%s --password=%s --single-transaction --routines --triggers %s > %s',    } else {
-
-            DB_HOST,        // Increment attempts on failure
-
-            DB_PORT,        $_SESSION[$key]['attempts']++;
-
-            DB_USER,        $_SESSION[$key]['last_attempt'] = time();
-
-            DB_PASS,    }
-
-            DB_NAME,}
-
-            escapeshellarg($backup_path)
-
-        );// Set timezone for consistent date/time handling
-
-        date_default_timezone_set('Europe/Amsterdam');
-
-        $output = [];
-
-        $return_code = 0;// Initialize application
-
-        exec($command, $output, $return_code);if (ENVIRONMENT === 'development') {
-
-            // Development mode indicators
-
-        if ($return_code === 0 && file_exists($backup_path)) {    header('X-Debug-Mode: Enabled');
-
-            return [    header('X-App-Version: ' . APP_VERSION);
-
-                'success' => true,}
-
-                'message' => 'Database backup created successfully',
-
-                'backup_file' => $backup_path,// Security headers
-
-                'file_size' => filesize($backup_path)header('X-Content-Type-Options: nosniff');
-
-            ];header('X-Frame-Options: DENY');
-
-        } else {header('X-XSS-Protection: 1; mode=block');
-
-            return [header('Referrer-Policy: strict-origin-when-cross-origin');
-
-                'success' => false,
-
-                'message' => 'Backup failed',// Performance headers
-
-                'error' => implode("\n", $output)header('Cache-Control: no-cache, no-store, must-revalidate');
-
-            ];header('Pragma: no-cache');
-
-        }header('Expires: 0');
-
-        ?>
-    } catch (Exception $e) {
-        return [
-            'success' => false,
-            'message' => 'Backup failed: ' . $e->getMessage()
-        ];
+/**
+ * Enhanced login requirement with redirect handling
+ * 
+ * @param string $redirect_to Optional redirect URL after login
+ */
+function requireLogin($redirect_to = null) {
+    if (!isLoggedIn()) {
+        $redirect_url = 'login.php';
+        
+        if ($redirect_to) {
+            $redirect_url .= '?redirect=' . urlencode($redirect_to);
+        } elseif (!empty($_SERVER['REQUEST_URI']) && !strpos($_SERVER['REQUEST_URI'], 'login.php')) {
+            $redirect_url .= '?redirect=' . urlencode($_SERVER['REQUEST_URI']);
+        }
+        
+        // Handle AJAX requests differently
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            http_response_code(401);
+            echo json_encode(['error' => 'Authentication required', 'redirect' => $redirect_url]);
+            exit();
+        }
+        
+        header('Location: ' . $redirect_url);
+        exit();
     }
 }
 
 /**
- * Clean up old sessions and temporary data
- * @return array Cleanup result
+ * Get current authenticated user with enhanced security checks
+ * 
+ * @return array|null User data or null if not logged in
  */
-function cleanupDatabase() {
-    try {
-        $db = getDBConnection();
-        $cleanup_count = 0;
-        
-        // Clean old rate limiting records (older than 24 hours)
-        $stmt = $db->query("DELETE FROM rate_limiting WHERE created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)");
-        $cleanup_count += $stmt->rowCount();
-        
-        // Reset lockout users where lockout has expired
-        $stmt = $db->query("UPDATE Users SET lockout_until = NULL, failed_login_attempts = 0 WHERE lockout_until < NOW()");
-        $cleanup_count += $stmt->rowCount();
-        
-        // Archive old completed events (older than 6 months)
-        $stmt = $db->query("UPDATE Events SET status = 'completed' WHERE date < DATE_SUB(NOW(), INTERVAL 6 MONTH) AND status = 'upcoming'");
-        $cleanup_count += $stmt->rowCount();
-        
-        return [
-            'success' => true,
-            'message' => 'Database cleanup completed',
-            'records_processed' => $cleanup_count
-        ];
-        
-    } catch (Exception $e) {
-        return [
-            'success' => false,
-            'message' => 'Cleanup failed: ' . $e->getMessage()
-        ];
+function getCurrentUser() {
+    global $pdo;
+    
+    if (!isLoggedIn()) {
+        return null;
     }
-}
-
-// ===================== INITIALIZATION =====================
-
-// Test connection on include (only in debug mode)
-if (DEBUG_MODE && !defined('SKIP_DB_TEST')) {
+    
     try {
-        $test_result = testDatabaseConnection();
-        if (!$test_result['success']) {
-            error_log("GamePlan DB: Connection test failed - " . $test_result['message']);
+        $stmt = $pdo->prepare("
+            SELECT user_id, username, email, created_at, last_activity, is_active, timezone, preferences 
+            FROM Users 
+            WHERE user_id = ? AND is_active = 1
+        ");
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch();
+        
+        if (!$user) {
+            logout(); // User no longer exists or is inactive
+            return null;
         }
-    } catch (Exception $e) {
-        error_log("GamePlan DB: Connection test error - " . $e->getMessage());
+        
+        return $user;
+    } catch (PDOException $e) {
+        error_log("Error fetching current user: " . $e->getMessage());
+        return null;
     }
 }
 
-// Set default timezone
+/**
+ * Enhanced input sanitization with comprehensive XSS protection
+ * 
+ * @param string|null $data Input data to sanitize
+ * @return string Sanitized data
+ */
+function sanitizeInput($data) {
+    if ($data === null) return '';
+    
+    // Convert to string and trim whitespace
+    $data = trim((string)$data);
+    
+    // Remove null bytes (security measure)
+    $data = str_replace(chr(0), '', $data);
+    
+    // Remove backslashes if magic quotes is enabled (legacy support)
+    if (function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc()) {
+        $data = stripslashes($data);
+    }
+    
+    // Enhanced HTML entity encoding for XSS protection
+    $data = htmlspecialchars($data, ENT_QUOTES | ENT_HTML5 | ENT_SUBSTITUTE, 'UTF-8');
+    
+    return $data;
+}
+
+/**
+ * Enhanced email validation with comprehensive checks
+ * 
+ * @param string $email Email to validate
+ * @return bool True if valid email
+ */
+function validateEmail($email) {
+    if (empty($email)) return false;
+    
+    // Basic format validation
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return false;
+    }
+    
+    // Length check
+    if (strlen($email) > 100) return false;
+    
+    // Check for consecutive dots (additional security)
+    if (strpos($email, '..') !== false) return false;
+    
+    // Check for valid domain structure
+    $parts = explode('@', $email);
+    if (count($parts) !== 2) return false;
+    
+    $domain = $parts[1];
+    if (empty($domain) || !strpos($domain, '.')) return false;
+    
+    return true;
+}
+
+/**
+ * Enhanced username validation with comprehensive rules
+ * 
+ * @param string $username Username to validate
+ * @return array Result with 'valid' boolean and 'error' message
+ */
+function validateUsername($username) {
+    if (empty($username)) {
+        return ['valid' => false, 'error' => 'Gebruikersnaam is verplicht'];
+    }
+    
+    $username = trim($username);
+    
+    if (strlen($username) < 3) {
+        return ['valid' => false, 'error' => 'Gebruikersnaam moet minimaal 3 karakters bevatten'];
+    }
+    
+    if (strlen($username) > 50) {
+        return ['valid' => false, 'error' => 'Gebruikersnaam mag maximaal 50 karakters bevatten'];
+    }
+    
+    // Check for only alphanumeric characters and underscores
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', $username)) {
+        return ['valid' => false, 'error' => 'Gebruikersnaam mag alleen letters, cijfers en underscores bevatten'];
+    }
+    
+    // Check for inappropriate words (basic filter)
+    $blocked_words = ['admin', 'administrator', 'root', 'system', 'null', 'undefined', 'test', 'guest'];
+    if (in_array(strtolower($username), $blocked_words)) {
+        return ['valid' => false, 'error' => 'Deze gebruikersnaam is niet toegestaan'];
+    }
+    
+    return ['valid' => true, 'error' => ''];
+}
+
+/**
+ * Enhanced password validation with security requirements
+ * 
+ * @param string $password Password to validate
+ * @return array Result with 'valid' boolean and 'error' message
+ */
+function validatePassword($password) {
+    if (empty($password)) {
+        return ['valid' => false, 'error' => 'Wachtwoord is verplicht'];
+    }
+    
+    if (strlen($password) < 6) {
+        return ['valid' => false, 'error' => 'Wachtwoord moet minimaal 6 karakters bevatten'];
+    }
+    
+    if (strlen($password) > 100) {
+        return ['valid' => false, 'error' => 'Wachtwoord mag maximaal 100 karakters bevatten'];
+    }
+    
+    return ['valid' => true, 'error' => ''];
+}
+
+/**
+ * Generate secure CSRF token with timestamp validation
+ * 
+ * @return string Generated token
+ */
+function generateCSRFToken() {
+    if (empty($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time']) || 
+        (time() - $_SESSION['csrf_token_time']) > 3600) { // Regenerate every hour
+        
+        if (function_exists('random_bytes')) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(CSRF_TOKEN_LENGTH));
+        } else {
+            // Fallback for older PHP versions
+            $_SESSION['csrf_token'] = bin2hex(openssl_random_pseudo_bytes(CSRF_TOKEN_LENGTH));
+        }
+        $_SESSION['csrf_token_time'] = time();
+    }
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * Verify CSRF token with timing attack protection
+ * 
+ * @param string $token Token to verify
+ * @return bool True if valid token
+ */
+function verifyCSRFToken($token) {
+    if (empty($_SESSION['csrf_token']) || empty($token)) {
+        return false;
+    }
+    
+    // Use hash_equals to prevent timing attacks
+    return hash_equals($_SESSION['csrf_token'], $token);
+}
+
+/**
+ * Enhanced secure logout with complete session cleanup
+ */
+function logout() {
+    global $pdo;
+    
+    // Log the logout event for security monitoring
+    if (isset($_SESSION['user_id'])) {
+        try {
+            logEvent("User logged out: " . ($_SESSION['username'] ?? 'Unknown'), 'INFO');
+        } catch (Exception $e) {
+            error_log("Error logging logout event: " . $e->getMessage());
+        }
+    }
+    
+    // Clear all session variables
+    $_SESSION = array();
+    
+    // Delete session cookie
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+    
+    // Destroy session
+    session_destroy();
+}
+
+/**
+ * Enhanced event logging with automatic log rotation
+ * 
+ * @param string $message Log message
+ * @param string $level Log level (INFO, WARNING, ERROR, CRITICAL)
+ * @param array $context Additional context data
+ */
+function logEvent($message, $level = 'INFO', $context = []) {
+    $timestamp = date('Y-m-d H:i:s');
+    $user_id = $_SESSION['user_id'] ?? 'guest';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $user_agent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'unknown', 0, 100);
+    
+    $context_str = !empty($context) ? ' | Context: ' . json_encode($context) : '';
+    
+    $log_message = "[$timestamp] [$level] [User: $user_id] [IP: $ip] $message$context_str" . PHP_EOL;
+    
+    // Create log file with date for automatic rotation
+    $log_file = __DIR__ . '/../logs/app_' . date('Y-m-d') . '.log';
+    
+    // Create logs directory if it doesn't exist
+    $log_dir = dirname($log_file);
+    if (!is_dir($log_dir)) {
+        mkdir($log_dir, 0755, true);
+    }
+    
+    // Write to log file
+    error_log($log_message, 3, $log_file);
+    
+    // Also log errors to system log for important events
+    if (in_array($level, ['ERROR', 'CRITICAL'])) {
+        error_log("GamePlan [$level]: $message");
+    }
+}
+
+/**
+ * Enhanced flash message system with type validation
+ * 
+ * @param string $type Message type (success, error, warning, info)
+ * @param string $message Message content
+ */
+function setFlashMessage($type, $message) {
+    if (!isset($_SESSION['flash_messages'])) {
+        $_SESSION['flash_messages'] = [];
+    }
+    
+    // Validate message type
+    $valid_types = ['success', 'error', 'warning', 'info'];
+    if (!in_array($type, $valid_types)) {
+        $type = 'info';
+    }
+    
+    $_SESSION['flash_messages'][] = [
+        'type' => $type,
+        'message' => sanitizeInput($message),
+        'timestamp' => time()
+    ];
+}
+
+/**
+ * Get and clear flash messages with automatic cleanup
+ * 
+ * @return array Array of flash messages
+ */
+function getFlashMessages() {
+    $messages = $_SESSION['flash_messages'] ?? [];
+    unset($_SESSION['flash_messages']);
+    
+    // Filter out old messages (older than 5 minutes)
+    $filtered_messages = array_filter($messages, function($msg) {
+        return (time() - $msg['timestamp']) < 300;
+    });
+    
+    return array_values($filtered_messages);
+}
+
+/**
+ * Enhanced rate limiting for login attempts and other actions
+ * 
+ * @param string $identifier IP address or username
+ * @param string $action Action type (login, register, etc.)
+ * @return bool True if rate limit exceeded
+ */
+function isRateLimited($identifier, $action = 'login') {
+    $key = 'rate_limit_' . $action . '_' . md5($identifier);
+    
+    if (!isset($_SESSION[$key])) {
+        $_SESSION[$key] = ['attempts' => 0, 'last_attempt' => 0];
+    }
+    
+    $data = $_SESSION[$key];
+    
+    // Reset counter if lockout time has passed
+    if (time() - $data['last_attempt'] > LOGIN_LOCKOUT_TIME) {
+        $_SESSION[$key] = ['attempts' => 0, 'last_attempt' => 0];
+        return false;
+    }
+    
+    return $data['attempts'] >= MAX_LOGIN_ATTEMPTS;
+}
+
+/**
+ * Record login attempt with enhanced tracking
+ * 
+ * @param string $identifier IP address or username
+ * @param bool $success Whether the attempt was successful
+ * @param string $action Action type
+ */
+function recordLoginAttempt($identifier, $success = false, $action = 'login') {
+    $key = 'rate_limit_' . $action . '_' . md5($identifier);
+    
+    if (!isset($_SESSION[$key])) {
+        $_SESSION[$key] = ['attempts' => 0, 'last_attempt' => 0];
+    }
+    
+    if ($success) {
+        // Reset on successful login
+        unset($_SESSION[$key]);
+        logEvent("Successful $action for identifier: " . substr($identifier, 0, 10) . '...', 'INFO');
+    } else {
+        // Increment attempts on failure
+        $_SESSION[$key]['attempts']++;
+        $_SESSION[$key]['last_attempt'] = time();
+        logEvent("Failed $action attempt for identifier: " . substr($identifier, 0, 10) . '...' . 
+                " (Attempt " . $_SESSION[$key]['attempts'] . ")", 'WARNING');
+    }
+}
+
+/**
+ * Enhanced database query helper with error handling
+ * 
+ * @param string $sql SQL query
+ * @param array $params Parameters for prepared statement
+ * @return PDOStatement|false Result or false on error
+ */
+function executeQuery($sql, $params = []) {
+    global $pdo;
+    
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        
+        if (DEBUG_MODE) {
+            error_log("GamePlan DB Query executed: " . substr($sql, 0, 100) . "...");
+        }
+        
+        return $stmt;
+    } catch (PDOException $e) {
+        error_log("GamePlan DB Query Error: " . $e->getMessage() . " | SQL: " . $sql);
+        return false;
+    }
+}
+
+/**
+ * Get database connection (legacy compatibility)
+ * 
+ * @return PDO Database connection
+ */
+function getDB() {
+    global $pdo;
+    return $pdo;
+}
+
+// ===================== INITIALIZATION AND SECURITY HEADERS =====================
+
+// Set timezone for consistent date/time handling
 date_default_timezone_set('Europe/Amsterdam');
 
-// Define access constant for security
+// Initialize application based on environment
+if (ENVIRONMENT === 'development') {
+    // Development mode indicators
+    header('X-Debug-Mode: Enabled');
+    header('X-App-Version: ' . APP_VERSION);
+    header('X-Environment: Development');
+}
+
+// Enhanced security headers
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+
+// Performance and caching headers
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+// Content Security Policy (basic)
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net; img-src 'self' data:; font-src 'self' cdn.jsdelivr.net;");
+
+// Log application startup
+if (DEBUG_MODE) {
+    logEvent("GamePlan Scheduler initialized successfully", 'INFO', [
+        'environment' => ENVIRONMENT,
+        'version' => APP_VERSION,
+        'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
+    ]);
+}
+
+// Define global constants for the application
 if (!defined('GAMEPLAN_DB_LOADED')) {
     define('GAMEPLAN_DB_LOADED', true);
+    define('GAMEPLAN_INITIALIZED', true);
+    define('GAMEPLAN_START_TIME', microtime(true));
 }
+
+// Clean up old sessions and temporary data periodically
+register_shutdown_function(function() {
+    // Clean up expired sessions data
+    if (isset($_SESSION) && is_array($_SESSION)) {
+        foreach ($_SESSION as $key => $value) {
+            if (strpos($key, 'rate_limit_') === 0 && is_array($value) && 
+                isset($value['last_attempt']) && 
+                (time() - $value['last_attempt']) > LOGIN_LOCKOUT_TIME) {
+                unset($_SESSION[$key]);
+            }
+        }
+    }
+    
+    if (DEBUG_MODE && defined('GAMEPLAN_START_TIME')) {
+        $execution_time = microtime(true) - GAMEPLAN_START_TIME;
+        error_log("GamePlan Request completed in " . round($execution_time * 1000, 2) . "ms");
+    }
+});
 
 ?>
