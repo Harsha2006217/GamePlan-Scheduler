@@ -1,13 +1,11 @@
 <?php
-// Core Functions for GamePlan Scheduler
-// Created by Harsha Kanaparthi on 02-10-2025
-// This file contains all business logic, queries, and validation functions.
-// Structured with short, focused methods for readability. All queries use prepared statements for security.
-// Validation includes trim, length checks, regex for formats, and business rules (e.g., future dates only).
-
 require_once 'db.php';
 
-// Start session if not active
+// Utility functions for GamePlan Scheduler
+// Created by Harsha Kanaparthi on 02-10-2025
+// Includes authentication, CRUD operations, validation, and reminder logic
+
+// Start session if not started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -17,34 +15,32 @@ if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Validate CSRF token on POST requests
+// Validate CSRF token
 function validateCSRF() {
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        setMessage('danger', 'Invalid request. Please try again.');
-        header('Location: index.php');
-        exit;
+        die('Invalid CSRF token');
     }
 }
 
-// Set session message for alerts
-function setMessage($type, $msg) {
-    $_SESSION['alert'] = ['type' => $type, 'msg' => $msg];
+// Set session message
+function setMessage($type, $message) {
+    $_SESSION['message'] = ['type' => $type, 'message' => $message];
 }
 
 // Get and clear session message
 function getMessage() {
-    if (isset($_SESSION['alert'])) {
-        $alert = $_SESSION['alert'];
-        unset($_SESSION['alert']);
-        return $alert;
+    if (isset($_SESSION['message'])) {
+        $msg = $_SESSION['message'];
+        unset($_SESSION['message']);
+        return $msg;
     }
     return null;
 }
 
-// Require user login, redirect if not
+// Require user login
 function requireLogin() {
     if (!isset($_SESSION['user_id'])) {
-        setMessage('danger', 'Please log in to access this page.');
+        setMessage('danger', 'Please log in to access this page');
         header('Location: login.php');
         exit;
     }
@@ -55,44 +51,59 @@ function getUserId() {
     return $_SESSION['user_id'] ?? 0;
 }
 
-// Register new user with validation
+// Register new user
 function registerUser($username, $email, $password) {
     global $pdo;
     $username = trim($username);
     $email = trim($email);
-    if (empty($username) || strlen($username) > 50 || !preg_match('/^[a-zA-Z0-9_-]+$/', $username)) {
-        return 'Username must be 1-50 characters, alphanumeric with hyphen/underscore.';
+    $password = trim($password);
+
+    if (empty($username) || empty($email) || empty($password)) {
+        return 'All fields are required';
     }
+
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        return 'Invalid email format.';
+        return 'Invalid email format';
     }
+
     if (strlen($password) < 8) {
-        return 'Password must be at least 8 characters.';
+        return 'Password must be at least 8 characters';
     }
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Users WHERE username = ? OR email = ?");
-    $stmt->execute([$username, $email]);
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Users WHERE username = :username OR email = :email");
+    $stmt->execute(['username' => $username, 'email' => $email]);
     if ($stmt->fetchColumn() > 0) {
-        return 'Username or email already taken.';
+        return 'Username or email already taken';
     }
+
     $hash = password_hash($password, PASSWORD_BCRYPT);
-    $stmt = $pdo->prepare("INSERT INTO Users (username, email, password_hash) VALUES (?, ?, ?)");
-    $stmt->execute([$username, $email, $hash]);
+    $stmt = $pdo->prepare("INSERT INTO Users (username, email, password_hash) VALUES (:username, :email, :hash)");
+    $stmt->execute(['username' => $username, 'email' => $email, 'hash' => $hash]);
+
     return true;
 }
 
-// Login user with validation
+// Login user
 function loginUser($username, $password) {
     global $pdo;
     $username = trim($username);
-    $stmt = $pdo->prepare("SELECT user_id, password_hash FROM Users WHERE username = ?");
-    $stmt->execute([$username]);
+    $password = trim($password);
+
+    if (empty($username) || empty($password)) {
+        return 'All fields are required';
+    }
+
+    $stmt = $pdo->prepare("SELECT user_id, password_hash FROM Users WHERE username = :username");
+    $stmt->execute(['username' => $username]);
     $user = $stmt->fetch();
+
     if ($user && password_verify($password, $user['password_hash'])) {
-        session_regenerate_id(true); // Prevent session fixation
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $user['user_id'];
         return true;
     }
-    return 'Incorrect username or password.';
+
+    return 'Invalid username or password';
 }
 
 // Logout user
@@ -102,19 +113,19 @@ function logoutUser() {
     exit;
 }
 
-// Check for session timeout (30 min)
+// Check session timeout (30 minutes)
 function checkTimeout() {
     global $pdo;
     if (isset($_SESSION['user_id'])) {
-        $stmt = $pdo->prepare("SELECT last_activity FROM Users WHERE user_id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $last = $stmt->fetchColumn();
-        if (time() - strtotime($last) > 1800) { // 30 minutes
+        $stmt = $pdo->prepare("SELECT last_activity FROM Users WHERE user_id = :user_id");
+        $stmt->execute(['user_id' => $_SESSION['user_id']]);
+        $last_activity = $stmt->fetchColumn();
+
+        if (time() - strtotime($last_activity) > 1800) {
             logoutUser();
         } else {
-            // Update activity on valid request
-            $stmt = $pdo->prepare("UPDATE Users SET last_activity = CURRENT_TIMESTAMP WHERE user_id = ?");
-            $stmt->execute([$_SESSION['user_id']]);
+            $stmt = $pdo->prepare("UPDATE Users SET last_activity = CURRENT_TIMESTAMP WHERE user_id = :user_id");
+            $stmt->execute(['user_id' => $_SESSION['user_id']]);
         }
     }
 }
@@ -122,7 +133,7 @@ function checkTimeout() {
 // Get all games
 function getGames() {
     global $pdo;
-    $stmt = $pdo->query("SELECT game_id, titel FROM Games ORDER BY titel ASC");
+    $stmt = $pdo->query("SELECT * FROM Games");
     return $stmt->fetchAll();
 }
 
@@ -130,30 +141,35 @@ function getGames() {
 function addFavoriteGame($game_id) {
     global $pdo;
     $user_id = getUserId();
-    if (!is_numeric($game_id)) {
-        return 'Invalid game ID.';
+
+    if (empty($game_id)) {
+        return 'Game ID is required';
     }
-    $stmt = $pdo->prepare("SELECT titel, description FROM Games WHERE game_id = ?");
-    $stmt->execute([$game_id]);
+
+    $stmt = $pdo->prepare("SELECT titel, description FROM Games WHERE game_id = :game_id");
+    $stmt->execute(['game_id' => $game_id]);
     $game = $stmt->fetch();
+
     if (!$game) {
-        return 'Game not found.';
+        return 'Game not found';
     }
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM UserGames WHERE user_id = ? AND game_id = ?");
-    $stmt->execute([$user_id, $game_id]);
-    if ($stmt->fetchColumn() > 0) {
-        return 'Already added to favorites.';
-    }
-    $stmt = $pdo->prepare("INSERT INTO UserGames (user_id, game_id, gametitel, game_description) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$user_id, $game_id, $game['titel'], $game['description']]);
+
+    $stmt = $pdo->prepare("INSERT INTO UserGames (user_id, game_id, gametitel, game_description) VALUES (:user_id, :game_id, :gametitel, :game_description)");
+    $stmt->execute([
+        'user_id' => $user_id,
+        'game_id' => $game_id,
+        'gametitel' => $game['titel'],
+        'game_description' => $game['description']
+    ]);
+
     return true;
 }
 
 // Get user's favorite games
 function getFavoriteGames($user_id) {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT gametitel AS titel, game_description AS description FROM UserGames WHERE user_id = ? ORDER BY gametitel ASC");
-    $stmt->execute([$user_id]);
+    $stmt = $pdo->prepare("SELECT gametitel, game_description FROM UserGames WHERE user_id = :user_id");
+    $stmt->execute(['user_id' => $user_id]);
     return $stmt->fetchAll();
 }
 
@@ -161,33 +177,34 @@ function getFavoriteGames($user_id) {
 function addFriend($friend_username) {
     global $pdo;
     $user_id = getUserId();
-    $friend_username = trim($friend_username);
-    if (empty($friend_username) || !preg_match('/^[a-zA-Z0-9_-]+$/', $friend_username)) {
-        return 'Invalid username.';
+
+    if (empty($friend_username)) {
+        return 'Friend username is required';
     }
-    $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE username = ?");
-    $stmt->execute([$friend_username]);
-    $friend_id = $stmt->fetchColumn();
-    if (!$friend_id || $friend_id == $user_id) {
-        return 'User not found or cannot add self.';
+
+    $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE username = :username");
+    $stmt->execute(['username' => $friend_username]);
+    $friend = $stmt->fetch();
+
+    if (!$friend) {
+        return 'User not found';
     }
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = ? AND friend_user_id = ?");
-    $stmt->execute([$user_id, $friend_id]);
-    if ($stmt->fetchColumn() > 0) {
-        return 'Already friends.';
+
+    if ($friend['user_id'] == $user_id) {
+        return 'Cannot add yourself as friend';
     }
-    $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_user_id) VALUES (?, ?)");
-    $stmt->execute([$user_id, $friend_id]);
+
+    $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_user_id) VALUES (:user_id, :friend_user_id)");
+    $stmt->execute(['user_id' => $user_id, 'friend_user_id' => $friend['user_id']]);
+
     return true;
 }
 
-// Get friends list with status
+// Get user's friends
 function getFriends($user_id) {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT u.user_id, u.username, 
-        IF(TIMESTAMPDIFF(SECOND, u.last_activity, CURRENT_TIMESTAMP) < 300, 'Online', 'Offline') AS status
-        FROM Friends f JOIN Users u ON f.friend_user_id = u.user_id WHERE f.user_id = ? ORDER BY u.username ASC");
-    $stmt->execute([$user_id]);
+    $stmt = $pdo->prepare("SELECT u.username, CASE WHEN TIMESTAMPDIFF(MINUTE, u.last_activity, CURRENT_TIMESTAMP) < 5 THEN 'Online' ELSE 'Offline' END AS status FROM Friends f JOIN Users u ON f.friend_user_id = u.user_id WHERE f.user_id = :user_id");
+    $stmt->execute(['user_id' => $user_id]);
     return $stmt->fetchAll();
 }
 
@@ -195,212 +212,227 @@ function getFriends($user_id) {
 function addSchedule($game_id, $date, $time, $friends_arr) {
     global $pdo;
     $user_id = getUserId();
-    if (!is_numeric($game_id)) {
-        return 'Select a game.';
+
+    if (empty($game_id) || empty($date) || empty($time)) {
+        return 'All fields are required';
     }
-    if (strtotime($date) < strtotime('today')) {
-        return 'Date must be today or future.';
-    }
-    if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]:00$/', $time)) {
-        return 'Invalid time format (HH:MM:00).';
-    }
+
     $friends = implode(',', $friends_arr);
-    $stmt = $pdo->prepare("INSERT INTO Schedules (user_id, game_id, date, time, friends) VALUES (?, ?, ?, ?, ?)");
-    $stmt->execute([$user_id, $game_id, $date, $time, $friends]);
+
+    $stmt = $pdo->prepare("INSERT INTO Schedules (user_id, game_id, date, time, friends) VALUES (:user_id, :game_id, :date, :time, :friends)");
+    $stmt->execute([
+        'user_id' => $user_id,
+        'game_id' => $game_id,
+        'date' => $date,
+        'time' => $time,
+        'friends' => $friends
+    ]);
+
     return true;
 }
 
-// Get schedules
+// Get user's schedules
 function getSchedules($user_id) {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT s.schedule_id, g.titel AS game_titel, s.date, s.time, s.friends 
-        FROM Schedules s JOIN Games g ON s.game_id = g.game_id WHERE s.user_id = ? ORDER BY s.date ASC, s.time ASC");
-    $stmt->execute([$user_id]);
+    $stmt = $pdo->prepare("SELECT s.schedule_id, g.titel AS game_titel, s.date, s.time, s.friends FROM Schedules s JOIN Games g ON s.game_id = g.game_id WHERE s.user_id = :user_id ORDER BY s.date, s.time");
+    $stmt->execute(['user_id' => $user_id]);
     return $stmt->fetchAll();
 }
 
-// Get schedule by ID
-function getScheduleById($id, $user_id) {
+// Edit schedule
+function editSchedule($schedule_id, $game_id, $date, $time, $friends_arr) {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT * FROM Schedules WHERE schedule_id = ? AND user_id = ?");
-    $stmt->execute([$id, $user_id]);
+    $user_id = getUserId();
+
+    if (empty($game_id) || empty($date) || empty($time)) {
+        return 'All fields are required';
+    }
+
+    $friends = implode(',', $friends_arr);
+
+    $stmt = $pdo->prepare("UPDATE Schedules SET game_id = :game_id, date = :date, time = :time, friends = :friends WHERE schedule_id = :schedule_id AND user_id = :user_id");
+    $stmt->execute([
+        'game_id' => $game_id,
+        'date' => $date,
+        'time' => $time,
+        'friends' => $friends,
+        'schedule_id' => $schedule_id,
+        'user_id' => $user_id
+    ]);
+
+    return $stmt->rowCount() > 0 ? true : 'Schedule not found or no permission';
+}
+
+// Get schedule by ID
+function getScheduleById($schedule_id) {
+    global $pdo;
+    $user_id = getUserId();
+    $stmt = $pdo->prepare("SELECT * FROM Schedules WHERE schedule_id = :schedule_id AND user_id = :user_id");
+    $stmt->execute(['schedule_id' => $schedule_id, 'user_id' => $user_id]);
     return $stmt->fetch();
 }
 
-// Edit schedule
-function editSchedule($id, $game_id, $date, $time, $friends_arr) {
-    global $pdo;
-    $user_id = getUserId();
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Schedules WHERE schedule_id = ? AND user_id = ?");
-    $stmt->execute([$id, $user_id]);
-    if ($stmt->fetchColumn() == 0) {
-        return 'Schedule not found or no permission.';
-    }
-    if (!is_numeric($game_id)) {
-        return 'Select a game.';
-    }
-    if (strtotime($date) < strtotime('today')) {
-        return 'Date must be today or future.';
-    }
-    if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]:00$/', $time)) {
-        return 'Invalid time format (HH:MM:00).';
-    }
-    $friends = implode(',', $friends_arr);
-    $stmt = $pdo->prepare("UPDATE Schedules SET game_id = ?, date = ?, time = ?, friends = ? WHERE schedule_id = ?");
-    $stmt->execute([$game_id, $date, $time, $friends, $id]);
-    return true;
-}
-
 // Add event
-function addEvent($title, $date, $time, $description, $reminder, $schedule_id, $shared_friends) {
+function addEvent($title, $date, $time, $description, $reminder, $schedule_id, $friend_ids) {
     global $pdo;
     $user_id = getUserId();
-    $title = trim($title);
-    $description = trim($description);
-    if (empty($title) || strlen($title) > 100) {
-        return 'Title must be 1-100 characters.';
+
+    if (empty($title) || empty($date) || empty($time)) {
+        return 'All fields are required';
     }
-    if (strtotime($date) < strtotime('today')) {
-        return 'Date must be today or future.';
-    }
-    if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]:00$/', $time)) {
-        return 'Invalid time format (HH:MM:00).';
-    }
-    if (strlen($description) > 500) {
-        return 'Description max 500 characters.';
-    }
-    if ($schedule_id && !is_numeric($schedule_id)) {
-        return 'Invalid schedule ID.';
-    }
-    $stmt = $pdo->prepare("INSERT INTO Events (user_id, title, date, time, description, reminder, schedule_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$user_id, $title, $date, $time, $description, $reminder, $schedule_id ?: null]);
+
+    $stmt = $pdo->prepare("INSERT INTO Events (user_id, title, date, time, description, reminder, schedule_id) VALUES (:user_id, :title, :date, :time, :description, :reminder, :schedule_id)");
+    $stmt->execute([
+        'user_id' => $user_id,
+        'title' => $title,
+        'date' => $date,
+        'time' => $time,
+        'description' => $description,
+        'reminder' => $reminder,
+        'schedule_id' => $schedule_id
+    ]);
+
     $event_id = $pdo->lastInsertId();
-    foreach ($shared_friends as $friend_id) {
-        if (is_numeric($friend_id)) {
-            $stmt = $pdo->prepare("INSERT INTO EventUserMap (event_id, friend_id) VALUES (?, ?)");
-            $stmt->execute([$event_id, $friend_id]);
-        }
+
+    foreach ($friend_ids as $friend_id) {
+        $stmt = $pdo->prepare("INSERT INTO EventUserMap (event_id, friend_id) VALUES (:event_id, :friend_id)");
+        $stmt->execute(['event_id' => $event_id, 'friend_id' => $friend_id]);
     }
+
     return true;
 }
 
-// Get events with shared users
+// Get user's events
 function getEvents($user_id) {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT e.*, s.game_id FROM Events e LEFT JOIN Schedules s ON e.schedule_id = s.schedule_id WHERE e.user_id = ? ORDER BY e.date ASC, e.time ASC");
-    $stmt->execute([$user_id]);
+    $stmt = $pdo->prepare("SELECT e.event_id, e.title, e.date, e.time, e.description, e.reminder, e.schedule_id FROM Events e WHERE e.user_id = :user_id ORDER BY e.date, e.time");
+    $stmt->execute(['user_id' => $user_id]);
     $events = $stmt->fetchAll();
+
     foreach ($events as &$event) {
-        $stmt = $pdo->prepare("SELECT u.username FROM EventUserMap em JOIN Users u ON em.friend_id = u.user_id WHERE em.event_id = ?");
-        $stmt->execute([$event['event_id']]);
+        $stmt = $pdo->prepare("SELECT u.username FROM EventUserMap m JOIN Users u ON m.friend_id = u.user_id WHERE m.event_id = :event_id");
+        $stmt->execute(['event_id' => $event['event_id']]);
         $event['shared_with'] = $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
+
     return $events;
 }
 
-// Get event by ID
-function getEventById($id, $user_id) {
-    global $pdo;
-    $stmt = $pdo->prepare("SELECT * FROM Events WHERE event_id = ? AND user_id = ?");
-    $stmt->execute([$id, $user_id]);
-    $event = $stmt->fetch();
-    if ($event) {
-        $stmt = $pdo->prepare("SELECT friend_id FROM EventUserMap WHERE event_id = ?");
-        $stmt->execute([$id]);
-        $event['shared_friends'] = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    }
-    return $event;
-}
-
 // Edit event
-function editEvent($id, $title, $date, $time, $description, $reminder, $schedule_id, $shared_friends) {
+function editEvent($event_id, $title, $date, $time, $description, $reminder, $schedule_id, $friend_ids) {
     global $pdo;
     $user_id = getUserId();
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Events WHERE event_id = ? AND user_id = ?");
-    $stmt->execute([$id, $user_id]);
-    if ($stmt->fetchColumn() == 0) {
-        return 'Event not found or no permission.';
+
+    if (empty($title) || empty($date) || empty($time)) {
+        return 'All fields are required';
     }
-    $title = trim($title);
-    $description = trim($description);
-    if (empty($title) || strlen($title) > 100) {
-        return 'Title must be 1-100 characters.';
+
+    $stmt = $pdo->prepare("UPDATE Events SET title = :title, date = :date, time = :time, description = :description, reminder = :reminder, schedule_id = :schedule_id WHERE event_id = :event_id AND user_id = :user_id");
+    $stmt->execute([
+        'title' => $title,
+        'date' => $date,
+        'time' => $time,
+        'description' => $description,
+        'reminder' => $reminder,
+        'schedule_id' => $schedule_id,
+        'event_id' => $event_id,
+        'user_id' => $user_id
+    ]);
+
+    if ($stmt->rowCount() == 0) {
+        return 'Event not found or no permission';
     }
-    if (strtotime($date) < strtotime('today')) {
-        return 'Date must be today or future.';
+
+    $stmt = $pdo->prepare("DELETE FROM EventUserMap WHERE event_id = :event_id");
+    $stmt->execute(['event_id' => $event_id]);
+
+    foreach ($friend_ids as $friend_id) {
+        $stmt = $pdo->prepare("INSERT INTO EventUserMap (event_id, friend_id) VALUES (:event_id, :friend_id)");
+        $stmt->execute(['event_id' => $event_id, 'friend_id' => $friend_id]);
     }
-    if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]:00$/', $time)) {
-        return 'Invalid time format (HH:MM:00).';
-    }
-    if (strlen($description) > 500) {
-        return 'Description max 500 characters.';
-    }
-    if ($schedule_id && !is_numeric($schedule_id)) {
-        return 'Invalid schedule ID.';
-    }
-    $stmt = $pdo->prepare("UPDATE Events SET title = ?, date = ?, time = ?, description = ?, reminder = ?, schedule_id = ? WHERE event_id = ?");
-    $stmt->execute([$title, $date, $time, $description, $reminder, $schedule_id ?: null, $id]);
-    $stmt = $pdo->prepare("DELETE FROM EventUserMap WHERE event_id = ?");
-    $stmt->execute([$id]);
-    foreach ($shared_friends as $friend_id) {
-        if (is_numeric($friend_id)) {
-            $stmt = $pdo->prepare("INSERT INTO EventUserMap (event_id, friend_id) VALUES (?, ?)");
-            $stmt->execute([$id, $friend_id]);
-        }
-    }
+
     return true;
 }
 
+// Get event by ID
+function getEventById($event_id) {
+    global $pdo;
+    $user_id = getUserId();
+    $stmt = $pdo->prepare("SELECT * FROM Events WHERE event_id = :event_id AND user_id = :user_id");
+    $stmt->execute(['event_id' => $event_id, 'user_id' => $user_id]);
+    $event = $stmt->fetch();
+
+    if ($event) {
+        $stmt = $pdo->prepare("SELECT friend_id FROM EventUserMap WHERE event_id = :event_id");
+        $stmt->execute(['event_id' => $event_id]);
+        $event['shared_with'] = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    return $event;
+}
+
 // Delete schedule
-function deleteSchedule($id) {
+function deleteSchedule($schedule_id) {
     global $pdo;
     $user_id = getUserId();
-    $stmt = $pdo->prepare("DELETE FROM Schedules WHERE schedule_id = ? AND user_id = ?");
-    $stmt->execute([$id, $user_id]);
+
+    $stmt = $pdo->prepare("DELETE FROM Schedules WHERE schedule_id = :schedule_id AND user_id = :user_id");
+    $stmt->execute(['schedule_id' => $schedule_id, 'user_id' => $user_id]);
+
     return $stmt->rowCount() > 0;
 }
 
-// Delete event (cascades to EventUserMap)
-function deleteEvent($id) {
+// Delete event
+function deleteEvent($event_id) {
     global $pdo;
     $user_id = getUserId();
-    $stmt = $pdo->prepare("DELETE FROM Events WHERE event_id = ? AND user_id = ?");
-    $stmt->execute([$id, $user_id]);
+
+    $stmt = $pdo->prepare("DELETE FROM Events WHERE event_id = :event_id AND user_id = :user_id");
+    $stmt->execute(['event_id' => $event_id, 'user_id' => $user_id]);
+
     return $stmt->rowCount() > 0;
 }
 
-// Get merged calendar data
-function getCalendarData($user_id) {
-    $schedules = getSchedules($user_id);
-    $events = getEvents($user_id);
-    $calendar = array_merge($schedules, $events);
-    usort($calendar, function($a, $b) {
-        $a_time = strtotime($a['date'] . ' ' . $a['time']);
-        $b_time = strtotime($b['date'] . ' ' . $b['time']);
-        return $a_time - $b_time;
-    });
-    return $calendar;
+// Get calendar overview (merged schedules and events)
+function getCalendarOverview() {
+    global $pdo;
+    $user_id = getUserId();
+
+    $stmt = $pdo->prepare("SELECT 'schedule' AS type, s.schedule_id AS id, g.titel AS title, s.date, s.time, '' AS description, '' AS reminder, s.friends AS shared_with FROM Schedules s JOIN Games g ON s.game_id = g.game_id WHERE s.user_id = :user_id 
+                           UNION 
+                           SELECT 'event' AS type, e.event_id AS id, e.title, e.date, e.time, e.description, e.reminder, GROUP_CONCAT(u.username) AS shared_with FROM Events e LEFT JOIN EventUserMap m ON e.event_id = m.event_id LEFT JOIN Users u ON m.friend_id = u.user_id WHERE e.user_id = :user_id GROUP BY e.event_id 
+                           ORDER BY date, time");
+    $stmt->execute(['user_id' => $user_id]);
+    return $stmt->fetchAll();
 }
 
-// Get due reminders for pop-ups
-function getDueReminders($user_id) {
+// Get due reminders
+function getDueReminders() {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT title, date, time, reminder FROM Events WHERE user_id = ? AND date >= CURDATE()");
-    $stmt->execute([$user_id]);
+    $user_id = getUserId();
+
+    $stmt = $pdo->prepare("SELECT title, date, time, reminder FROM Events WHERE user_id = :user_id AND reminder IS NOT NULL");
+    $stmt->execute(['user_id' => $user_id]);
+    $events = $stmt->fetchAll();
+
     $reminders = [];
     $now = time();
-    foreach ($stmt->fetchAll() as $event) {
+
+    foreach ($events as $event) {
         $event_time = strtotime($event['date'] . ' ' . $event['time']);
+
         $reminder_time = 0;
         if ($event['reminder'] == '1 hour before') {
             $reminder_time = $event_time - 3600;
         } elseif ($event['reminder'] == '1 day before') {
             $reminder_time = $event_time - 86400;
         }
+
         if ($reminder_time > 0 && $now >= $reminder_time && $now < $event_time) {
-            $reminders[] = "Reminder: " . $event['title'] . " at " . $event['time'] . " on " . $event['date'];
+            $reminders[] = "Reminder: " . $event['title'] . " on " . $event['date'] . " at " . $event['time'];
         }
     }
+
     return $reminders;
 }
 ?>

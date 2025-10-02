@@ -1,20 +1,36 @@
 <?php
 require_once 'functions.php';
+
 requireLogin();
 checkTimeout();
+
 $type = $_GET['type'] ?? '';
 $id = $_GET['id'] ?? 0;
-if (!in_array($type, ['schedule', 'event']) || !is_numeric($id)) {
-    setMessage('danger', 'Invalid request.');
+
+if (!is_numeric($id)) {
+    setMessage('danger', 'Invalid ID');
     header('Location: index.php');
     exit;
 }
-$result = $type == 'schedule' ? deleteSchedule($id) : deleteEvent($id);
-if ($result) {
-    setMessage('success', ucfirst($type) . ' deleted successfully.');
+
+if ($type == 'schedule') {
+    $result = deleteSchedule($id);
+    $message = 'Schedule deleted successfully';
+} elseif ($type == 'event') {
+    $result = deleteEvent($id);
+    $message = 'Event deleted successfully';
 } else {
-    setMessage('danger', ucfirst($type) . ' not found or no permission.');
+    setMessage('danger', 'Invalid type');
+    header('Location: index.php');
+    exit;
 }
+
+if ($result) {
+    setMessage('success', $message);
+} else {
+    setMessage('danger', 'Failed to delete');
+}
+
 header('Location: index.php');
 exit;
 ?>
