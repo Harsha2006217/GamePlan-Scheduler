@@ -3,21 +3,17 @@ require_once 'functions.php';
 requireLogin();
 checkTimeout();
 $id = $_GET['id'] ?? 0;
-if (!is_numeric($id)) {
-    setMessage('error', 'Invalid event ID.');
-    header('Location: index.php');
-    exit;
-}
-$event = getEventById($id, getUserId());
+$user_id = getUserId();
+$event = getEventById($id, $user_id);
 if (!$event) {
-    setMessage('error', 'Event not found or no permission.');
+    setMessage('danger', 'Event not found.');
     header('Location: index.php');
     exit;
 }
-$schedules = getSchedules(getUserId());
-$friends = getFriends(getUserId());
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$schedules = getSchedules($user_id);
+$friends = getFriends($user_id);
+$shared_friends = $event['shared_friends'];
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     validateCSRF();
     $title = $_POST['title'] ?? '';
     $date = $_POST['date'] ?? '';
@@ -32,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: index.php');
         exit;
     } else {
-        setMessage('error', $result);
+        setMessage('danger', $result);
     }
 }
 ?>
@@ -45,20 +41,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Edit Event - GamePlan Scheduler</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Reuse styling */
-        body { background-color: #121212; color: #ffffff; font-family: 'Sans-serif', Arial; margin: 0; padding: 0; }
-        header { background: #1e1e1e; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-        header nav a { color: #ffffff; margin: 0 15px; text-decoration: none; font-size: 1.1em; transition: color 0.3s; }
-        header nav a:hover { color: #007bff; }
+        body { background-color: #121212; color: #ffffff; font-family: sans-serif; }
+        header { background: #1e1e1e; padding: 15px; text-align: center; box-shadow: 0 0 10px rgba(0,0,0,0.5); position: sticky; top: 0; z-index: 1; }
+        nav a { color: #fff; margin: 0 15px; text-decoration: none; }
+        nav a:hover { color: #007bff; }
         .container { max-width: 800px; margin: 20px auto; padding: 20px; }
-        .form-control, .form-select, textarea { background: #2c2c2c; color: #fff; border: 1px solid #dddddd; }
-        .btn-primary { background: #007bff; border: none; transition: background 0.3s; }
-        .btn-primary:hover { background: #0056b3; }
-        .alert { margin-bottom: 20px; border-radius: 5px; padding: 12px; }
+        .form-control { background: #2c2c2c; border: 1px solid #444; color: #fff; }
+        .form-select { background: #2c2c2c; border: 1px solid #444; color: #fff; }
+        .btn-primary { background: #007bff; border: none; }
+        .btn-primary:hover { background: #0069d9; }
+        .alert { padding: 10px; border-radius: 5px; margin-bottom: 15px; }
         .alert-success { background: #28a745; }
         .alert-danger { background: #dc3545; }
-        footer { background: #1e1e1e; padding: 10px; text-align: center; color: #aaaaaa; font-size: 0.9em; }
-        @media (max-width: 768px) { .container { padding: 15px; } }
+        footer { background: #1e1e1e; padding: 10px; text-align: center; color: #aaa; }
     </style>
 </head>
 <body>
@@ -77,22 +72,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php $msg = getMessage(); if ($msg): ?>
             <div class="alert alert-<?php echo $msg['type']; ?>"><?php echo htmlspecialchars($msg['msg']); ?></div>
         <?php endif; ?>
-        <form method="POST" onsubmit="return validateEventForm();">
+        <form method="POST">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
             <div class="mb-3">
-                <label for="title" class="form-label">Title (max 100 chars)</label>
-                <input type="text" class="form-control" id="title" name="title" required maxlength="100" value="<?php echo htmlspecialchars($event['title']); ?>">
+                <label for="title" class="form-label">Title</label>
+                <input type="text" class="form-control" id="title" name="title" required max length="100" value="<?php echo htmlspecialchars($event['title']); ?>">
             </div>
             <div class="mb-3">
                 <label for="date" class="form-label">Date</label>
                 <input type="date" class="form-control" id="date" name="date" required min="<?php echo date('Y-m-d'); ?>" value="<?php echo htmlspecialchars($event['date']); ?>">
             </div>
             <div class="mb-3">
-                <label for="time" class="form-label">Time (HH:MM)</label>
+                <label for="time" class="form-label">Time</label>
                 <input type="time" class="form-control" id="time" name="time" required value="<?php echo htmlspecialchars($event['time']); ?>">
             </div>
             <div class="mb-3">
-                <label for="description" class="form-label">Description (max 500 chars)</label>
+                <label for="description" class="form-label">Description</label>
                 <textarea class="form-control" id="description" name="description" maxlength="500"><?php echo htmlspecialchars($event['description']); ?></textarea>
             </div>
             <div class="mb-3">
@@ -116,43 +111,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label class="form-label">Share with Friends</label>
                 <?php foreach ($friends as $friend): ?>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="shared_friends[]" value="<?php echo $friend['user_id']; ?>" id="shared_<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $event['shared_friends'])) echo 'checked'; ?>>
-                        <label class="form-check-label" for="shared_<?php echo $friend['user_id']; ?>"><?php echo htmlspecialchars($friend['username']); ?></label>
+                        <input class="form-check-input" type="checkbox" name="shared_friends[]" value="<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $shared_friends)) echo 'checked'; ?>>
+                        <label class="form-check-label"><?php echo htmlspecialchars($friend['username']); ?></label>
                     </div>
                 <?php endforeach; ?>
             </div>
-            <button type="submit" class="btn btn-primary">Update Event</button>
+            <button type="submit" class="btn btn-primary">Update</button>
         </form>
     </div>
     <footer>
-        © 2025 GamePlan Scheduler by Harsha Kanaparthi | <a href="#" style="color: #aaaaaa;">Privacy</a> | <a href="#" style="color: #aaaaaa;">Contact</a>
+        © 2025 GamePlan Scheduler by Harsha Kanaparthi | Privacy | Contact
     </footer>
-    <script>
-        // Reuse validation from add_event
-        function validateEventForm() {
-            // Same as add_event.js
-            const title = document.getElementById('title').value.trim();
-            const date = document.getElementById('date').value;
-            const time = document.getElementById('time').value;
-            const desc = document.getElementById('description').value;
-            if (title === '' || title.length > 100 || /^\s*$/.test(title)) {
-                alert('Title required, max 100 chars, not just spaces.');
-                return false;
-            }
-            if (new Date(date) < new Date().setHours(0,0,0,0)) {
-                alert('Date must be in the future.');
-                return false;
-            }
-            if (!time.match(/^([01]\d|2[0-3]):[0-5]\d$/)) {
-                alert('Invalid time format (HH:MM).');
-                return false;
-            }
-            if (desc.length > 500) {
-                alert('Description max 500 chars.');
-                return false;
-            }
-            return true;
-        }
-    </script>
 </body>
 </html>

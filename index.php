@@ -19,23 +19,21 @@ $reminders = getDueReminders($user_id);
     <title>Dashboard - GamePlan Scheduler</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Advanced dashboard styling - dark theme, cards for calendar, tables with padding/hover */
-        body { background-color: #121212; color: #ffffff; font-family: 'Sans-serif', Arial; margin: 0; padding: 0; }
-        header { background: #1e1e1e; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-        header nav a { color: #ffffff; margin: 0 15px; text-decoration: none; font-size: 1.1em; transition: color 0.3s; }
-        header nav a:hover { color: #007bff; }
+        body { background-color: #121212; color: #ffffff; font-family: sans-serif; }
+        header { background: #1e1e1e; padding: 15px; text-align: center; box-shadow: 0 0 10px rgba(0,0,0,0.5); position: sticky; top: 0; z-index: 1; }
+        nav a { color: #fff; margin: 0 15px; text-decoration: none; }
+        nav a:hover { color: #007bff; }
         .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
-        .section { background: #2c2c2c; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; font-size: 1.1em; }
-        table th, table td { padding: 12px; border: 1px solid #dddddd; text-align: left; }
-        table thead { background: #007bff; color: #fff; }
-        table tr:hover { background: #3a3a3a; transition: background 0.3s; }
-        .card { background: #2c2c2c; border-radius: 10px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-        .alert { margin-bottom: 20px; border-radius: 5px; padding: 12px; }
+        .section { background: #2c2c2c; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; border: 1px solid #444; }
+        thead { background: #007bff; }
+        tr:hover { background: #3a3a3a; }
+        .card { background: #2c2c2c; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .alert { padding: 10px; border-radius: 5px; margin-bottom: 15px; }
         .alert-success { background: #28a745; }
         .alert-danger { background: #dc3545; }
-        footer { background: #1e1e1e; padding: 10px; text-align: center; color: #aaaaaa; font-size: 0.9em; }
-        @media (max-width: 768px) { table { font-size: 0.9em; } .container { padding: 15px; } }
+        footer { background: #1e1e1e; padding: 10px; text-align: center; color: #aaa; }
     </style>
 </head>
 <body>
@@ -75,7 +73,7 @@ $reminders = getDueReminders($user_id);
 
         <div class="section">
             <h3>Schedules</h3>
-            <table class="table table-dark">
+            <table>
                 <thead>
                     <tr><th>Game</th><th>Date</th><th>Time</th><th>Friends</th><th>Actions</th></tr>
                 </thead>
@@ -87,8 +85,8 @@ $reminders = getDueReminders($user_id);
                             <td><?php echo htmlspecialchars($sched['time']); ?></td>
                             <td><?php echo htmlspecialchars($sched['friends']); ?></td>
                             <td>
-                                <a href="edit_schedule.php?id=<?php echo $sched['schedule_id']; ?>" class="btn btn-sm btn-primary">Edit</a>
-                                <a href="delete.php?type=schedule&id=<?php echo $sched['schedule_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this schedule?');">Delete</a>
+                                <a href="edit_schedule.php?id=<?php echo $sched['schedule_id']; ?>">Edit</a>
+                                <a href="delete.php?type=schedule&id=<?php echo $sched['schedule_id']; ?>" onclick="return confirm('Are you sure?');">Delete</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -98,7 +96,7 @@ $reminders = getDueReminders($user_id);
 
         <div class="section">
             <h3>Events</h3>
-            <table class="table table-dark">
+            <table>
                 <thead>
                     <tr><th>Title</th><th>Date</th><th>Time</th><th>Description</th><th>Reminder</th><th>Shared With</th><th>Actions</th></tr>
                 </thead>
@@ -112,8 +110,8 @@ $reminders = getDueReminders($user_id);
                             <td><?php echo htmlspecialchars($event['reminder']); ?></td>
                             <td><?php echo implode(', ', $event['shared_with'] ?? []); ?></td>
                             <td>
-                                <a href="edit_event.php?id=<?php echo $event['event_id']; ?>" class="btn btn-sm btn-primary">Edit</a>
-                                <a href="delete.php?type=event&id=<?php echo $event['event_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this event?');">Delete</a>
+                                <a href="edit_event.php?id=<?php echo $event['event_id']; ?>">Edit</a>
+                                <a href="delete.php?type=event&id=<?php echo $event['event_id']; ?>" onclick="return confirm('Are you sure?');">Delete</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -135,10 +133,10 @@ $reminders = getDueReminders($user_id);
         </div>
     </div>
     <footer>
-        © 2025 GamePlan Scheduler by Harsha Kanaparthi | <a href="#" style="color: #aaaaaa;">Privacy</a> | <a href="#" style="color: #aaaaaa;">Contact</a>
+        © 2025 GamePlan Scheduler by Harsha Kanaparthi | Privacy | Contact
     </footer>
     <script>
-        // Show reminders as pop-ups on load
+        // Display reminders as pop-ups
         const reminders = <?php echo json_encode($reminders); ?>;
         reminders.forEach(msg => alert(msg));
     </script>

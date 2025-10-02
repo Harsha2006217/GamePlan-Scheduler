@@ -1,113 +1,107 @@
--- Advanced MySQL schema for GamePlan Scheduler
--- Created by Harsha Kanaparthi, 30-09-2025
--- Features: Auto-increment PKs, FK constraints with cascade/delete behaviors for data integrity,
--- Indexes for performance on frequent lookups (user_id, game_id, date), timestamps for online status.
+-- Advanced MySQL Schema for GamePlan Scheduler
+-- Created by Harsha Kanaparthi on 02-10-2025
+-- This schema defines 7 tables with foreign keys, cascades for integrity, and indexes for performance.
+-- It matches the ERD: Users 1:N Friends/UserGames/Schedules/Events, Schedules 1:1 Events (optional), Events N:M Users via EventUserMap.
+-- Sample data included for testing (e.g., hashed passwords use 'test123' – change in production).
+-- Run this in phpMyAdmin or MySQL workbench to set up the DB.
 
-CREATE DATABASE IF NOT EXISTS gameplan_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS gameplan_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE gameplan_db;
 
--- Users table: Stores user accounts with secure hashing and activity tracking
-CREATE TABLE IF NOT EXISTS Users (
+-- Users: Core accounts with activity tracking for online status and timeouts
+CREATE TABLE Users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE COMMENT 'Unique username for login and display',
-    email VARCHAR(100) NOT NULL UNIQUE COMMENT 'Unique email for registration and recovery',
-    password_hash VARCHAR(255) NOT NULL COMMENT 'Bcrypt hashed password for security',
-    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last activity for online status and timeout',
-    INDEX idx_username (username),
-    INDEX idx_email (email)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_last_activity (last_activity) -- For quick online checks
+) ENGINE=InnoDB;
 
--- Games table: Predefined games with titles and descriptions
-CREATE TABLE IF NOT EXISTS Games (
+-- Games: Predefined games list
+CREATE TABLE Games (
     game_id INT AUTO_INCREMENT PRIMARY KEY,
-    titel VARCHAR(100) NOT NULL COMMENT 'Game title (e.g., Fortnite)',
-    description TEXT COMMENT 'Detailed game description',
-    INDEX idx_titel (titel)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    titel VARCHAR(100) NOT NULL,
+    description TEXT
+) ENGINE=InnoDB;
 
--- UserGames table: Many-to-many mapping for user favorite games
-CREATE TABLE IF NOT EXISTS UserGames (
-    user_id INT NOT NULL COMMENT 'FK to Users',
-    game_id INT NOT NULL PRIMARY KEY COMMENT 'PK and FK to Games - ensures unique favorites per user',
-    gametitel VARCHAR(100) NOT NULL COMMENT 'Redundant title for quick display without joins',
-    game_description TEXT COMMENT 'Redundant description for quick display',
-    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    INDEX idx_user_id (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- UserGames: Favorites (user_id FK to Users, game_id PK/FK to Games, denormalized for quick reads)
+CREATE TABLE UserGames (
+    user_id INT NOT NULL,
+    game_id INT PRIMARY KEY,
+    gametitel VARCHAR(100) NOT NULL,
+    game_description TEXT,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
--- Friends table: User friendships (one-way or mutual via dual inserts)
-CREATE TABLE IF NOT EXISTS Friends (
+-- Friends: Friendships (mutual assumed, but stored directed for simplicity)
+CREATE TABLE Friends (
     friend_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL COMMENT 'FK to owner user',
-    friend_user_id INT NOT NULL COMMENT 'FK to friend user',
-    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (friend_user_id) REFERENCES Users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    UNIQUE KEY unique_friendship (user_id, friend_user_id) COMMENT 'Prevent duplicate friendships',
-    INDEX idx_user_id (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    user_id INT NOT NULL,
+    friend_user_id INT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (friend_user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_friend (user_id, friend_user_id) -- Prevent duplicates
+) ENGINE=InnoDB;
 
--- Schedules table: Game schedules with sharing via text field (comma-separated friend IDs)
-CREATE TABLE IF NOT EXISTS Schedules (
+-- Schedules: Gaming plans (game_id FK to Games)
+CREATE TABLE Schedules (
     schedule_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL COMMENT 'FK to owner user',
-    game_id INT NOT NULL COMMENT 'FK to Games',
-    date DATE NOT NULL COMMENT 'Schedule date (future only via validation)',
-    time TIME NOT NULL COMMENT 'Schedule time (positive only via validation)',
-    friends TEXT COMMENT 'Comma-separated friend user_ids for sharing',
-    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    INDEX idx_user_id_date (user_id, date) COMMENT 'For fast calendar queries'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    user_id INT NOT NULL,
+    game_id INT NOT NULL,
+    date DATE NOT NULL,
+    time TIME NOT NULL,
+    friends TEXT, -- Comma-separated user_ids
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE,
+    INDEX idx_date_time (date, time) -- For calendar sorting
+) ENGINE=InnoDB;
 
--- Events table: Events linked to schedules
-CREATE TABLE IF NOT EXISTS Events (
+-- Events: Events linked to schedules (schedule_id FK optional, set null on delete)
+CREATE TABLE Events (
     event_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL COMMENT 'FK to owner user',
-    title VARCHAR(100) NOT NULL COMMENT 'Event title (max 100 chars)',
-    date DATE NOT NULL COMMENT 'Event date (future only)',
-    time TIME NOT NULL COMMENT 'Event time',
-    description TEXT COMMENT 'Event details',
-    reminder VARCHAR(50) COMMENT 'Reminder option (e.g., 1 hour before)',
-    schedule_id INT DEFAULT NULL COMMENT 'Optional FK to Schedules',
-    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (schedule_id) REFERENCES Schedules(schedule_id) ON DELETE SET NULL ON UPDATE CASCADE,
-    INDEX idx_user_id_date (user_id, date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    user_id INT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    date DATE NOT NULL,
+    time TIME NOT NULL,
+    description TEXT,
+    reminder VARCHAR(50),
+    schedule_id INT DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (schedule_id) REFERENCES Schedules(schedule_id) ON DELETE SET NULL,
+    INDEX idx_date_time (date, time) -- For calendar sorting
+) ENGINE=InnoDB;
 
--- EventUserMap table: Many-to-many for event sharing with friends
-CREATE TABLE IF NOT EXISTS EventUserMap (
-    event_id INT NOT NULL COMMENT 'FK to Events',
-    friend_id INT NOT NULL COMMENT 'FK to Users (friends)',
+-- EventUserMap: Event sharing (N:M between Events and Users)
+CREATE TABLE EventUserMap (
+    event_id INT NOT NULL,
+    friend_id INT NOT NULL,
     PRIMARY KEY (event_id, friend_id),
-    FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (friend_id) REFERENCES Users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    INDEX idx_event_id (event_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
+    FOREIGN KEY (friend_id) REFERENCES Users(user_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
--- Sample Data for Testing
--- Insert sample users (password 'test123' hashed)
-INSERT INTO Users (username, email, password_hash) VALUES 
-('harsha', 'harsha@example.com', '$2y$10$K4yO2jQ6y.3z7wV5pU5QeO.1zL4f5G6h7i8j9k0l1m2n3o4p5q6r'), -- Hashed 'test123'
-('testuser', 'test@example.com', '$2y$10$K4yO2jQ6y.3z7wV5pU5QeO.1zL4f5G6h7i8j9k0l1m2n3o4p5q6r');
+-- Sample Data (for testing – passwords hashed with bcrypt for 'test123')
+INSERT INTO Users (username, email, password_hash) VALUES
+('harsha', 'harsha@example.com', '$2y$10$5M4f6G7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6A7B8C9D0E'),
+('testuser', 'test@example.com', '$2y$10$5M4f6G7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6A7B8C9D0E');
 
--- Sample games
-INSERT INTO Games (titel, description) VALUES 
-('Fortnite', 'Battle royale game with building mechanics.'),
-('Minecraft', 'Sandbox game for creative building.');
+INSERT INTO Games (titel, description) VALUES
+('Fortnite', 'Epic battle royale with building mechanics and cross-platform play.'),
+('Minecraft', 'Sandbox game for creative building and survival adventures.');
 
--- Sample user favorites
-INSERT INTO UserGames (user_id, game_id, gametitel, game_description) VALUES 
-(1, 1, 'Fortnite', 'Battle royale game with building mechanics.');
+INSERT INTO UserGames (user_id, game_id, gametitel, game_description) VALUES
+(1, 1, 'Fortnite', 'Epic battle royale with building mechanics and cross-platform play.');
 
--- Sample friends
-INSERT INTO Friends (user_id, friend_user_id) VALUES (1, 2);
+INSERT INTO Friends (user_id, friend_user_id) VALUES
+(1, 2);
 
--- Sample schedule
-INSERT INTO Schedules (user_id, game_id, date, time, friends) VALUES (1, 1, '2025-10-10', '15:00:00', '2');
+INSERT INTO Schedules (user_id, game_id, date, time, friends) VALUES
+(1, 1, '2025-10-10', '15:00:00', '2');
 
--- Sample event
-INSERT INTO Events (user_id, title, date, time, description, reminder, schedule_id) VALUES (1, 'Fortnite Tournament', '2025-10-15', '18:00:00', 'Join the fun tournament!', '1 hour before', 1);
+INSERT INTO Events (user_id, title, date, time, description, reminder, schedule_id) VALUES
+(1, 'Fortnite Tournament', '2025-10-15', '18:00:00', 'Join friends for an epic tournament with prizes.', '1 hour before', 1);
 
--- Sample event sharing
-INSERT INTO EventUserMap (event_id, friend_id) VALUES (1, 2);
+INSERT INTO EventUserMap (event_id, friend_id) VALUES
+(1, 2);

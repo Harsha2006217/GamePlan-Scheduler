@@ -3,22 +3,17 @@ require_once 'functions.php';
 requireLogin();
 checkTimeout();
 $id = $_GET['id'] ?? 0;
-if (!is_numeric($id)) {
-    setMessage('error', 'Invalid schedule ID.');
-    header('Location: index.php');
-    exit;
-}
-$schedule = getScheduleById($id, getUserId());
+$user_id = getUserId();
+$schedule = getScheduleById($id, $user_id);
 if (!$schedule) {
-    setMessage('error', 'Schedule not found or no permission.');
+    setMessage('danger', 'Schedule not found.');
     header('Location: index.php');
     exit;
 }
 $games = getGames();
-$friends = getFriends(getUserId());
-$shared_friends = explode(',', $schedule['friends'] ?? '');
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$friends = getFriends($user_id);
+$shared_friends = explode(',', $schedule['friends']);
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     validateCSRF();
     $game_id = $_POST['game_id'] ?? '';
     $date = $_POST['date'] ?? '';
@@ -30,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: index.php');
         exit;
     } else {
-        setMessage('error', $result);
+        setMessage('danger', $result);
     }
 }
 ?>
@@ -43,20 +38,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Edit Schedule - GamePlan Scheduler</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Reuse styling */
-        body { background-color: #121212; color: #ffffff; font-family: 'Sans-serif', Arial; margin: 0; padding: 0; }
-        header { background: #1e1e1e; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-        header nav a { color: #ffffff; margin: 0 15px; text-decoration: none; font-size: 1.1em; transition: color 0.3s; }
-        header nav a:hover { color: #007bff; }
+        body { background-color: #121212; color: #ffffff; font-family: sans-serif; }
+        header { background: #1e1e1e; padding: 15px; text-align: center; box-shadow: 0 0 10px rgba(0,0,0,0.5); position: sticky; top: 0; z-index: 1; }
+        nav a { color: #fff; margin: 0 15px; text-decoration: none; }
+        nav a:hover { color: #007bff; }
         .container { max-width: 800px; margin: 20px auto; padding: 20px; }
-        .form-control, .form-select { background: #2c2c2c; color: #fff; border: 1px solid #dddddd; }
-        .btn-primary { background: #007bff; border: none; transition: background 0.3s; }
-        .btn-primary:hover { background: #0056b3; }
-        .alert { margin-bottom: 20px; border-radius: 5px; padding: 12px; }
+        .form-control { background: #2c2c2c; border: 1px solid #444; color: #fff; }
+        .form-select { background: #2c2c2c; border: 1px solid #444; color: #fff; }
+        .btn-primary { background: #007bff; border: none; }
+        .btn-primary:hover { background: #0069d9; }
+        .alert { padding: 10px; border-radius: 5px; margin-bottom: 15px; }
         .alert-success { background: #28a745; }
         .alert-danger { background: #dc3545; }
-        footer { background: #1e1e1e; padding: 10px; text-align: center; color: #aaaaaa; font-size: 0.9em; }
-        @media (max-width: 768px) { .container { padding: 15px; } }
+        footer { background: #1e1e1e; padding: 10px; text-align: center; color: #aaa; }
     </style>
 </head>
 <body>
@@ -75,12 +69,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php $msg = getMessage(); if ($msg): ?>
             <div class="alert alert-<?php echo $msg['type']; ?>"><?php echo htmlspecialchars($msg['msg']); ?></div>
         <?php endif; ?>
-        <form method="POST" onsubmit="return validateScheduleForm();">
+        <form method="POST">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
             <div class="mb-3">
                 <label for="game_id" class="form-label">Game</label>
                 <select class="form-select" id="game_id" name="game_id" required>
-                    <option value="">Select game...</option>
+                    <option value="">Select Game</option>
                     <?php foreach ($games as $game): ?>
                         <option value="<?php echo $game['game_id']; ?>" <?php if ($game['game_id'] == $schedule['game_id']) echo 'selected'; ?>><?php echo htmlspecialchars($game['titel']); ?></option>
                     <?php endforeach; ?>
@@ -91,45 +85,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="date" class="form-control" id="date" name="date" required min="<?php echo date('Y-m-d'); ?>" value="<?php echo htmlspecialchars($schedule['date']); ?>">
             </div>
             <div class="mb-3">
-                <label for="time" class="form-label">Time (HH:MM)</label>
+                <label for="time" class="form-label">Time</label>
                 <input type="time" class="form-control" id="time" name="time" required value="<?php echo htmlspecialchars($schedule['time']); ?>">
             </div>
             <div class="mb-3">
-                <label class="form-label">Share with Friends</label>
+                <label class="form-label">Friends</label>
                 <?php foreach ($friends as $friend): ?>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="friends[]" value="<?php echo $friend['user_id']; ?>" id="friend_<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $shared_friends)) echo 'checked'; ?>>
-                        <label class="form-check-label" for="friend_<?php echo $friend['user_id']; ?>"><?php echo htmlspecialchars($friend['username']); ?></label>
+                        <input class="form-check-input" type="checkbox" name="friends[]" value="<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $shared_friends)) echo 'checked'; ?>>
+                        <label class="form-check-label"><?php echo htmlspecialchars($friend['username']); ?></label>
                     </div>
                 <?php endforeach; ?>
             </div>
-            <button type="submit" class="btn btn-primary">Update Schedule</button>
+            <button type="submit" class="btn btn-primary">Update</button>
         </form>
     </div>
     <footer>
-        © 2025 GamePlan Scheduler by Harsha Kanaparthi | <a href="#" style="color: #aaaaaa;">Privacy</a> | <a href="#" style="color: #aaaaaa;">Contact</a>
+        © 2025 GamePlan Scheduler by Harsha Kanaparthi | Privacy | Contact
     </footer>
-    <script>
-        // Reuse validation from add_schedule
-        function validateScheduleForm() {
-            // Same as add_schedule.js
-            const gameId = document.getElementById('game_id').value;
-            const date = document.getElementById('date').value;
-            const time = document.getElementById('time').value;
-            if (gameId === '') {
-                alert('Select a game.');
-                return false;
-            }
-            if (new Date(date) < new Date().setHours(0,0,0,0)) {
-                alert('Date must be in the future.');
-                return false;
-            }
-            if (!time.match(/^([01]\d|2[0-3]):[0-5]\d$/)) {
-                alert('Invalid time format (HH:MM).');
-                return false;
-            }
-            return true;
-        }
-    </script>
 </body>
 </html>

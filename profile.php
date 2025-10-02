@@ -5,17 +5,17 @@ checkTimeout();
 $user_id = getUserId();
 $games = getGames();
 $favorites = getFavoriteGames($user_id);
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     validateCSRF();
     $game_id = $_POST['game_id'] ?? '';
     $result = addFavoriteGame($game_id);
     if ($result === true) {
-        setMessage('success', 'Favorite game added.');
+        setMessage('success', 'Favorite added.');
+        header('Location: profile.php');
+        exit;
     } else {
-        setMessage('error', $result);
+        setMessage('danger', $result);
     }
-    header('Location: profile.php');
-    exit;
 }
 ?>
 
@@ -27,21 +27,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Profile - GamePlan Scheduler</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Reuse dashboard styling */
-        body { background-color: #121212; color: #ffffff; font-family: 'Sans-serif', Arial; margin: 0; padding: 0; }
-        header { background: #1e1e1e; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-        header nav a { color: #ffffff; margin: 0 15px; text-decoration: none; font-size: 1.1em; transition: color 0.3s; }
-        header nav a:hover { color: #007bff; }
+        body { background-color: #121212; color: #ffffff; font-family: sans-serif; }
+        header { background: #1e1e1e; padding: 15px; text-align: center; box-shadow: 0 0 10px rgba(0,0,0,0.5); position: sticky; top: 0; z-index: 1; }
+        nav a { color: #fff; margin: 0 15px; text-decoration: none; }
+        nav a:hover { color: #007bff; }
         .container { max-width: 800px; margin: 20px auto; padding: 20px; }
-        .section { background: #2c2c2c; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
-        .form-control, .form-select { background: #2c2c2c; color: #fff; border: 1px solid #dddddd; }
-        .btn-primary { background: #007bff; border: none; transition: background 0.3s; }
-        .btn-primary:hover { background: #0056b3; }
-        .alert { margin-bottom: 20px; border-radius: 5px; padding: 12px; }
+        .section { background: #2c2c2c; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .form-select { background: #2c2c2c; border: 1px solid #444; color: #fff; }
+        .btn-primary { background: #007bff; border: none; }
+        .btn-primary:hover { background: #0069d9; }
+        .alert { padding: 10px; border-radius: 5px; margin-bottom: 15px; }
         .alert-success { background: #28a745; }
         .alert-danger { background: #dc3545; }
-        footer { background: #1e1e1e; padding: 10px; text-align: center; color: #aaaaaa; font-size: 0.9em; }
-        @media (max-width: 768px) { .container { padding: 15px; } }
+        footer { background: #1e1e1e; padding: 10px; text-align: center; color: #aaa; }
     </style>
 </head>
 <body>
@@ -63,18 +61,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="section">
             <h3>Add Favorite Game</h3>
-            <form method="POST" onsubmit="return validateFavoriteForm();">
+            <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
-                <div class="mb-3">
-                    <label for="game_id" class="form-label">Select Game</label>
-                    <select class="form-select" id="game_id" name="game_id" required>
-                        <option value="">Choose a game...</option>
-                        <?php foreach ($games as $game): ?>
-                            <option value="<?php echo $game['game_id']; ?>"><?php echo htmlspecialchars($game['titel']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">Add to Favorites</button>
+                <select class="form-select mb-3" name="game_id" required>
+                    <option value="">Select Game</option>
+                    <?php foreach ($games as $game): ?>
+                        <option value="<?php echo $game['game_id']; ?>"><?php echo htmlspecialchars($game['titel']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit" class="btn btn-primary">Add</button>
             </form>
         </div>
 
@@ -88,18 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
     <footer>
-        © 2025 GamePlan Scheduler by Harsha Kanaparthi | <a href="#" style="color: #aaaaaa;">Privacy</a> | <a href="#" style="color: #aaaaaa;">Contact</a>
+        © 2025 GamePlan Scheduler by Harsha Kanaparthi | Privacy | Contact
     </footer>
-    <script>
-        // Client-side validation for favorite form
-        function validateFavoriteForm() {
-            const gameId = document.getElementById('game_id').value;
-            if (gameId === '') {
-                alert('Please select a game.');
-                return false;
-            }
-            return true;
-        }
-    </script>
 </body>
 </html>
