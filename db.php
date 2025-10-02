@@ -19,4 +19,9 @@ try {
     error_log("Connection failed: " . $e->getMessage(), 0);
     die('Could not connect to the database. Please try again later.');
 }
+
+function getPDO() {
+    global $pdo;
+    return $pdo;
+}
 ?>

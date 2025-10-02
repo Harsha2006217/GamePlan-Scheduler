@@ -25,59 +25,193 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body { background-color: #121212; color: #ffffff; font-family: sans-serif; margin: 0; padding: 0; }
-        .container { max-width: 800px; margin: 60px auto; padding: 20px; background: #1e1e1e; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
-        .form-control { background: #2c2c2c; color: #fff; border: 1px solid #ddd; transition: border 0.3s; }
-        .form-control:focus { border-color: #007bff; }
-        .btn-primary { background: #007bff; border: none; transition: background 0.3s; }
-        .btn-primary:hover { background: #0056b3; }
-        .alert { border-radius: 5px; padding: 12px; }
-        .alert-success { background: #28a745; }
-        .alert-danger { background: #dc3545; }
-        @media (max-width: 768px) { .container { padding: 15px; } }
+        :root {
+            --primary-color: #007bff;
+            --dark-bg: #121212;
+            --card-bg: #1e1e1e;
+            --input-bg: #2c2c2c;
+            --text-color: #ffffff;
+        }
+        
+        body { 
+            background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
+            color: var(--text-color); 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; 
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        
+        .register-container {
+            max-width: 450px;
+            width: 100%;
+            margin: 20px auto;
+            padding: 40px 30px;
+            background: var(--card-bg);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        .form-control { 
+            background: var(--input-bg); 
+            color: var(--text-color); 
+            border: 1px solid #444; 
+            border-radius: 8px;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus { 
+            border-color: var(--primary-color); 
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+            background: var(--input-bg);
+            color: var(--text-color);
+        }
+        
+        .btn-primary { 
+            background: linear-gradient(135deg, var(--primary-color), #0056b3);
+            border: none; 
+            border-radius: 8px;
+            padding: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,123,255,0.4);
+        }
+        
+        .alert { 
+            border-radius: 8px; 
+            padding: 15px;
+            border: none;
+        }
+        
+        .alert-success { background: rgba(40,167,69,0.2); color: #28a745; border-left: 4px solid #28a745; }
+        .alert-danger { background: rgba(220,53,69,0.2); color: #dc3545; border-left: 4px solid #dc3545; }
+        
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ddd;
+        }
+        
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #aaa;
+        }
+        
+        .login-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) { 
+            .register-container { 
+                margin: 10px;
+                padding: 30px 20px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2 class="text-center mb-4"><i class="bi bi-person-plus-fill"></i> Register</h2>
+    <div class="register-container">
+        <div class="logo">
+            <i class="bi bi-controller"></i>
+            <h2 class="mb-0">GamePlan Scheduler</h2>
+            <p class="text-muted">Create Your Gaming Account</p>
+        </div>
+        
         <?php $msg = getMessage(); if ($msg): ?>
-            <div class="alert alert-<?php echo $msg['type']; ?>"><?php echo htmlspecialchars($msg['msg']); ?></div>
+            <div class="alert alert-<?php echo $msg['type']; ?> mb-4">
+                <i class="bi bi-<?php echo $msg['type'] === 'success' ? 'check-circle' : 'exclamation-triangle'; ?> me-2"></i>
+                <?php echo htmlspecialchars($msg['msg']); ?>
+            </div>
         <?php endif; ?>
+        
         <form method="POST" onsubmit="return validateRegisterForm();">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
-            <div class="mb-3">
-                <label for="username" class="form-label">Username <i class="bi bi-person"></i></label>
-                <input type="text" class="form-control" id="username" name="username" required maxlength="50" aria-label="Username">
+            
+            <div class="mb-4">
+                <label for="username" class="form-label">
+                    <i class="bi bi-person me-2"></i>Username
+                </label>
+                <input type="text" class="form-control" id="username" name="username" required maxlength="50" 
+                       placeholder="Enter your username" aria-label="Username">
+                <div class="form-text text-muted">1-50 characters, letters, numbers, hyphens, underscores</div>
             </div>
-            <div class="mb-3">
-                <label for="email" class="form-label">Email <i class="bi bi-envelope"></i></label>
-                <input type="email" class="form-control" id="email" name="email" required maxlength="100" aria-label="Email">
+            
+            <div class="mb-4">
+                <label for="email" class="form-label">
+                    <i class="bi bi-envelope me-2"></i>Email
+                </label>
+                <input type="email" class="form-control" id="email" name="email" required maxlength="100" 
+                       placeholder="Enter your email" aria-label="Email">
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password <i class="bi bi-lock"></i></label>
-                <input type="password" class="form-control" id="password" name="password" required minlength="8" aria-label="Password">
+            
+            <div class="mb-4">
+                <label for="password" class="form-label">
+                    <i class="bi bi-lock me-2"></i>Password
+                </label>
+                <input type="password" class="form-control" id="password" name="password" required minlength="8" 
+                       placeholder="Enter your password" aria-label="Password">
+                <div class="form-text text-muted">Minimum 8 characters</div>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Create Account</button>
+            
+            <button type="submit" class="btn btn-primary w-100 py-3">
+                <i class="bi bi-person-plus me-2"></i>Create Account
+            </button>
         </form>
-        <p class="text-center mt-3">Have an account? <a href="login.php" style="color: #007bff;">Log in here</a></p>
+        
+        <div class="login-link">
+            Already have an account? <a href="login.php">Log in here</a>
+        </div>
     </div>
+
     <script>
         function validateRegisterForm() {
             const username = document.getElementById('username').value.trim();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
+            
             if (!username || username.length > 50 || !/^[\w-]+$/.test(username)) {
-                alert('Username: 1-50 alphanumeric/hyphen/underscore.');
+                alert('Username: 1-50 alphanumeric characters, hyphens, or underscores only.');
                 return false;
             }
+            
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                alert('Invalid email format.');
+                alert('Please enter a valid email address.');
                 return false;
             }
+            
             if (password.length < 8) {
-                alert('Password at least 8 characters.');
+                alert('Password must be at least 8 characters long.');
                 return false;
             }
+            
             return true;
         }
     </script>

@@ -89,7 +89,10 @@ INSERT INTO Users (username, email, password_hash) VALUES
 
 INSERT INTO Games (titel, description) VALUES
 ('Fortnite', 'Epic battle royale with building mechanics and cross-platform play.'),
-('Minecraft', 'Sandbox game for creative building and survival adventures.');
+('Minecraft', 'Sandbox game for creative building and survival adventures.'),
+('Call of Duty: Warzone', 'Free-to-play battle royale with realistic combat.'),
+('League of Legends', 'Team-based strategy game with champions and objectives.'),
+('Valorant', 'Tactical shooter with unique agent abilities.');
 
 INSERT INTO UserGames (user_id, game_id, gametitel, game_description) VALUES
 (1, 1, 'Fortnite', 'Epic battle royale with building mechanics and cross-platform play.');
@@ -98,10 +101,12 @@ INSERT INTO Friends (user_id, friend_user_id) VALUES
 (1, 2);
 
 INSERT INTO Schedules (user_id, game_id, date, time, friends) VALUES
-(1, 1, '2025-10-10', '15:00:00', '2');
+(1, 1, '2025-10-10', '15:00:00', '2'),
+(1, 2, '2025-10-12', '18:00:00', '2');
 
 INSERT INTO Events (user_id, title, date, time, description, reminder, schedule_id) VALUES
-(1, 'Fortnite Tournament', '2025-10-15', '18:00:00', 'Join friends for an epic tournament with prizes.', '1 hour before', 1);
+(1, 'Fortnite Tournament', '2025-10-15', '18:00:00', 'Join friends for an epic tournament with prizes.', '1 hour before', 1),
+(1, 'Minecraft Build Competition', '2025-10-20', '14:00:00', 'Creative building competition with theme.', '1 day before', NULL);
 
 INSERT INTO EventUserMap (event_id, friend_id) VALUES
 (1, 2);
