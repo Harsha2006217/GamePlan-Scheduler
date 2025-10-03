@@ -1,4 +1,7 @@
 <?php
+// logout.php: Secure logout
 require_once 'functions.php';
-logoutUser();
+session_destroy();
+header('Location: login.php');
+exit;
 ?>
