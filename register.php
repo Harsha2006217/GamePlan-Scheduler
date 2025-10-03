@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $result = registerUser($username, $email, $password);
     if ($result === true) {
-        setMessage('success', 'Account created. Log in to start planning.');
+        setMessage('success', 'Account created successfully. Please log in.');
         header('Location: login.php');
         exit;
     } else {

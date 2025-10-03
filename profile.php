@@ -7,7 +7,7 @@ $games = getGames();
 $favorites = getFavoriteGames($user_id);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validateCSRF();
-    $game_ids = $_POST['game_ids'] ?? [];  // Now multiple
+    $game_ids = $_POST['game_ids'] ?? [];
     $success = true;
     foreach ($game_ids as $game_id) {
         $result = addFavoriteGame($game_id);

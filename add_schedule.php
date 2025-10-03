@@ -486,13 +486,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const today = new Date();
             
             if (selectedDate.toDateString() === today.toDateString()) {
-                // If today is selected, set min time to current time
                 const now = new Date();
                 const hours = now.getHours().toString().padStart(2, '0');
                 const minutes = now.getMinutes().toString().padStart(2, '0');
                 document.getElementById('time').min = `${hours}:${minutes}`;
             } else {
-                // For future dates, remove time restrictions
                 document.getElementById('time').removeAttribute('min');
             }
         });

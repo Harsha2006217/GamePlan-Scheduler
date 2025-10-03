@@ -1,27 +1,28 @@
 <?php
 require_once 'db.php';
 
-// Advanced function library for GamePlan Scheduler
-// Author: Harsha Kanaparthi
-// Features: Full CRUD for all entities, server/client validation, security checks (CSRF, hashing, prepared statements),
-// Session management with timeouts, reminder logic with JS alerts, calendar merging with usort for efficiency.
+// Advanced Functions Library for GamePlan Scheduler
+// Author: Harsha Kanaparthi - 02-10-2025
+// Includes all CRUD operations, validation, security (CSRF, hashing, escaping), session management, reminders, calendar logic.
+// Human-style coding with varied comments and logical flow for readability.
 
-session_start();  // Ensure session is started
+session_start();
 
-// CSRF Protection
-if (!isset($_SESSION['csrf_token'])) {
+// CSRF Protection - Generate and validate tokens
+if (!isset($_SESSION['csrf_token']) || time() - ($_SESSION['csrf_time'] ?? 0) > 3600) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    $_SESSION['csrf_time'] = time();
 }
 
 function validateCSRF() {
     if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        setMessage('error', 'Invalid CSRF token - request blocked for security.');
+        setMessage('error', 'Security error: Invalid form submission. Please try again.');
         header('Location: index.php');
         exit;
     }
 }
 
-// Message Handling (for success/error alerts)
+// Message System for User Feedback - Success/Error Alerts
 function setMessage($type, $msg) {
     $_SESSION['message'] = ['type' => $type, 'msg' => $msg];
 }
@@ -35,10 +36,10 @@ function getMessage() {
     return null;
 }
 
-// Authentication Functions
+// Authentication Helpers - Require Login, Get ID, Timeout Check
 function requireLogin() {
     if (!isset($_SESSION['user_id'])) {
-        setMessage('error', 'Please log in to access this page.');
+        setMessage('error', 'Please log in to access this feature.');
         header('Location: login.php');
         exit;
     }
@@ -48,23 +49,42 @@ function getUserId() {
     return $_SESSION['user_id'] ?? null;
 }
 
+function checkTimeout() {
+    $pdo = getPDO();
+    if (isset($_SESSION['user_id'])) {
+        $stmt = $pdo->prepare("SELECT last_activity FROM Users WHERE user_id = :user_id");
+        $stmt->execute(['user_id' => $_SESSION['user_id']]);
+        $last = $stmt->fetchColumn();
+        if (time() - strtotime($last) > 1800) { // 30 minutes
+            session_destroy();
+            setMessage('error', 'Session timed out. Please log in again.');
+            header('Location: login.php');
+            exit;
+        }
+        // Update activity on each request
+        $stmt = $pdo->prepare("UPDATE Users SET last_activity = CURRENT_TIMESTAMP WHERE user_id = :user_id");
+        $stmt->execute(['user_id' => $_SESSION['user_id']]);
+    }
+}
+
+// User Registration - Advanced Validation
 function registerUser($username, $email, $password) {
     $pdo = getPDO();
     $username = trim($username);
     $email = trim($email);
     if (empty($username) || strlen($username) > 50 || !preg_match('/^[\w-]+$/', $username)) {
-        return 'Username invalid (1-50 chars, alphanumeric/hyphen/underscore).';
+        return 'Invalid username: 1-50 chars, alphanumeric/hyphen/underscore only.';
     }
     if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 100) {
-        return 'Invalid email.';
+        return 'Invalid email format.';
     }
     if (strlen($password) < 8) {
-        return 'Password min 8 chars.';
+        return 'Password must be at least 8 characters.';
     }
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM Users WHERE username = :username OR email = :email");
     $stmt->execute(['username' => $username, 'email' => $email]);
     if ($stmt->fetchColumn() > 0) {
-        return 'Username or email taken.';
+        return 'Username or email already taken.';
     }
     $hash = password_hash($password, PASSWORD_BCRYPT);
     $stmt = $pdo->prepare("INSERT INTO Users (username, email, password_hash) VALUES (:username, :email, :hash)");
@@ -72,6 +92,7 @@ function registerUser($username, $email, $password) {
     return true;
 }
 
+// User Login - Secure Verification
 function loginUser($username, $password) {
     $pdo = getPDO();
     $stmt = $pdo->prepare("SELECT user_id, password_hash FROM Users WHERE username = :username");
@@ -84,28 +105,17 @@ function loginUser($username, $password) {
         $stmt->execute(['user_id' => $user['user_id']]);
         return true;
     }
-    return 'Invalid credentials.';
+    return 'Invalid username or password.';
 }
 
+// Logout - Secure Session Destruction
 function logoutUser() {
     session_destroy();
     header('Location: login.php');
     exit;
 }
 
-function checkTimeout() {
-    $pdo = getPDO();
-    if (isset($_SESSION['user_id'])) {
-        $stmt = $pdo->prepare("SELECT last_activity FROM Users WHERE user_id = :user_id");
-        $stmt->execute(['user_id' => $_SESSION['user_id']]);
-        $last = $stmt->fetchColumn();
-        if (time() - strtotime($last) > 1800) {
-            logoutUser();
-        }
-    }
-}
-
-// Game Functions
+// Game Functions - Get List, Add Favorite
 function getGames() {
     $pdo = getPDO();
     $stmt = $pdo->query("SELECT game_id, titel FROM Games ORDER BY titel ASC LIMIT 50");
@@ -116,7 +126,7 @@ function addFavoriteGame($game_id) {
     $user_id = getUserId();
     $pdo = getPDO();
     if (!is_numeric($game_id)) {
-        return 'Invalid game.';
+        return 'Invalid game selection.';
     }
     $stmt = $pdo->prepare("SELECT titel, description FROM Games WHERE game_id = :game_id");
     $stmt->execute(['game_id' => $game_id]);
@@ -127,7 +137,7 @@ function addFavoriteGame($game_id) {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM UserGames WHERE user_id = :user_id AND game_id = :game_id");
     $stmt->execute(['user_id' => $user_id, 'game_id' => $game_id]);
     if ($stmt->fetchColumn() > 0) {
-        return 'Already favorite.';
+        return 'Game already in favorites.';
     }
     $stmt = $pdo->prepare("INSERT INTO UserGames (user_id, game_id, gametitel, game_description) VALUES (:user_id, :game_id, :titel, :desc)");
     $stmt->execute(['user_id' => $user_id, 'game_id' => $game_id, 'titel' => $game['titel'], 'desc' => $game['description']]);
@@ -141,7 +151,7 @@ function getFavoriteGames($user_id) {
     return $stmt->fetchAll();
 }
 
-// Friend Functions
+// Friend Functions - Add, Get List
 function addFriend($friend_username) {
     $user_id = getUserId();
     $pdo = getPDO();
@@ -153,7 +163,7 @@ function addFriend($friend_username) {
     $stmt->execute(['username' => $friend_username, 'user_id' => $user_id]);
     $friend_id = $stmt->fetchColumn();
     if (!$friend_id) {
-        return 'User not found or self-add.';
+        return 'User not found or cannot add self.';
     }
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = :user_id AND friend_user_id = :friend_id");
     $stmt->execute(['user_id' => $user_id, 'friend_id' => $friend_id]);
@@ -174,18 +184,18 @@ function getFriends($user_id) {
     return $stmt->fetchAll();
 }
 
-// Schedule Functions
+// Schedule Functions - Add, Get, Edit, Get By ID
 function addSchedule($game_id, $date, $time, $friends) {
     $user_id = getUserId();
     $pdo = getPDO();
     if (!is_numeric($game_id)) {
-        return 'Game required.';
+        return 'Game selection required.';
     }
     if (strtotime($date) < time()) {
-        return 'Future date only.';
+        return 'Date must be in the future.';
     }
     if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d:00$/', $time)) {
-        return 'Time format HH:MM:00.';
+        return 'Invalid time format (HH:MM:00).';
     }
     $friends_str = implode(',', array_filter($friends, 'is_numeric'));
     $stmt = $pdo->prepare("INSERT INTO Schedules (user_id, game_id, date, time, friends) VALUES (:user_id, :game_id, :date, :time, :friends)");
@@ -208,16 +218,16 @@ function editSchedule($schedule_id, $game_id, $date, $time, $friends) {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM Schedules WHERE schedule_id = :id AND user_id = :user_id");
     $stmt->execute(['id' => $schedule_id, 'user_id' => $user_id]);
     if ($stmt->fetchColumn() == 0) {
-        return 'No permission.';
+        return 'No permission to edit this schedule.';
     }
     if (!is_numeric($game_id)) {
-        return 'Game required.';
+        return 'Game selection required.';
     }
     if (strtotime($date) < time()) {
-        return 'Future date only.';
+        return 'Date must be in the future.';
     }
     if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d:00$/', $time)) {
-        return 'Time format HH:MM:00.';
+        return 'Invalid time format (HH:MM:00).';
     }
     $friends_str = implode(',', array_filter($friends, 'is_numeric'));
     $stmt = $pdo->prepare("UPDATE Schedules SET game_id = :game_id, date = :date, time = :time, friends = :friends WHERE schedule_id = :id");
@@ -232,26 +242,26 @@ function getScheduleById($schedule_id, $user_id) {
     return $stmt->fetch();
 }
 
-// Event Functions
+// Event Functions - Add, Get, Edit, Get By ID, Due Reminders
 function addEvent($title, $date, $time, $description, $reminder, $schedule_id, $shared_friends) {
     $user_id = getUserId();
     $pdo = getPDO();
     $title = trim($title);
     $description = trim($description);
     if (empty($title) || strlen($title) > 100 || preg_match('/^\s*$/', $title)) {
-        return 'Title: max 100, not empty/spaces.';
+        return 'Title required (1-100 chars, no spaces only).';
     }
     if (strtotime($date) < time()) {
-        return 'Future date only.';
+        return 'Date must be in the future.';
     }
     if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d:00$/', $time)) {
-        return 'Time format HH:MM:00.';
+        return 'Invalid time format (HH:MM:00).';
     }
     if (strlen($description) > 500) {
-        return 'Description max 500.';
+        return 'Description max 500 chars.';
     }
     if (!empty($schedule_id) && !is_numeric($schedule_id)) {
-        return 'Invalid schedule.';
+        return 'Invalid schedule link.';
     }
     $stmt = $pdo->prepare("INSERT INTO Events (user_id, title, date, time, description, reminder, schedule_id) VALUES (:user_id, :title, :date, :time, :desc, :reminder, :schedule_id)");
     $stmt->execute(['user_id' => $user_id, 'title' => $title, 'date' => $date, 'time' => $time, 'desc' => $description, 'reminder' => $reminder, 'schedule_id' => $schedule_id ?: null]);
@@ -283,24 +293,24 @@ function editEvent($event_id, $title, $date, $time, $description, $reminder, $sc
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM Events WHERE event_id = :id AND user_id = :user_id");
     $stmt->execute(['id' => $event_id, 'user_id' => $user_id]);
     if ($stmt->fetchColumn() == 0) {
-        return 'No permission.';
+        return 'No permission to edit this event.';
     }
     $title = trim($title);
     $description = trim($description);
     if (empty($title) || strlen($title) > 100 || preg_match('/^\s*$/', $title)) {
-        return 'Title: max 100, not empty/spaces.';
+        return 'Title required (1-100 chars, no spaces only).';
     }
     if (strtotime($date) < time()) {
-        return 'Future date only.';
+        return 'Date must be in the future.';
     }
     if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d:00$/', $time)) {
-        return 'Time format HH:MM:00.';
+        return 'Invalid time format (HH:MM:00).';
     }
     if (strlen($description) > 500) {
-        return 'Description max 500.';
+        return 'Description max 500 chars.';
     }
     if (!empty($schedule_id) && !is_numeric($schedule_id)) {
-        return 'Invalid schedule.';
+        return 'Invalid schedule link.';
     }
     $stmt = $pdo->prepare("UPDATE Events SET title = :title, date = :date, time = :time, description = :desc, reminder = :reminder, schedule_id = :schedule_id WHERE event_id = :id");
     $stmt->execute(['title' => $title, 'date' => $date, 'time' => $time, 'desc' => $description, 'reminder' => $reminder, 'schedule_id' => $schedule_id ?: null, 'id' => $event_id]);
@@ -326,34 +336,6 @@ function getEventById($event_id, $user_id) {
     return $event;
 }
 
-function deleteSchedule($schedule_id) {
-    $user_id = getUserId();
-    $pdo = getPDO();
-    $stmt = $pdo->prepare("DELETE FROM Schedules WHERE schedule_id = :id AND user_id = :user_id");
-    $stmt->execute(['id' => $schedule_id, 'user_id' => $user_id]);
-    return $stmt->rowCount() > 0;
-}
-
-function deleteEvent($event_id) {
-    $user_id = getUserId();
-    $pdo = getPDO();
-    $stmt = $pdo->prepare("DELETE FROM Events WHERE event_id = :id AND user_id = :user_id");
-    $stmt->execute(['id' => $event_id, 'user_id' => $user_id]);
-    return $stmt->rowCount() > 0;
-}
-
-function getCalendarData($user_id) {
-    $schedules = getSchedules($user_id);
-    $events = getEvents($user_id);
-    $calendar = array_merge($schedules, $events);
-    usort($calendar, function($a, $b) {
-        $timeA = strtotime($a['date'] . ' ' . $a['time']);
-        $timeB = strtotime($b['date'] . ' ' . $b['time']);
-        return $timeA - $timeB;
-    });
-    return $calendar;
-}
-
 function getDueReminders($user_id) {
     $pdo = getPDO();
     $now = time();
@@ -370,5 +352,35 @@ function getDueReminders($user_id) {
         }
     }
     return $reminders;
+}
+
+// Calendar - Merge and Sort Schedules/Events
+function getCalendarData($user_id) {
+    $schedules = getSchedules($user_id);
+    $events = getEvents($user_id);
+    $calendar = array_merge($schedules, $events);
+    usort($calendar, function($a, $b) {
+        $timeA = strtotime($a['date'] . ' ' . $a['time']);
+        $timeB = strtotime($b['date'] . ' ' . $b['time']);
+        return $timeA - $timeB;
+    });
+    return $calendar;
+}
+
+// Deletion Functions - Secure with Ownership Check
+function deleteSchedule($schedule_id) {
+    $user_id = getUserId();
+    $pdo = getPDO();
+    $stmt = $pdo->prepare("DELETE FROM Schedules WHERE schedule_id = :id AND user_id = :user_id");
+    $stmt->execute(['id' => $schedule_id, 'user_id' => $user_id]);
+    return $stmt->rowCount() > 0;
+}
+
+function deleteEvent($event_id) {
+    $user_id = getUserId();
+    $pdo = getPDO();
+    $stmt = $pdo->prepare("DELETE FROM Events WHERE event_id = :id AND user_id = :user_id");
+    $stmt->execute(['id' => $event_id, 'user_id' => $user_id]);
+    return $stmt->rowCount() > 0;
 }
 ?>

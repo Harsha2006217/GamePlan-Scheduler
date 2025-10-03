@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validateCSRF();
     $title = $_POST['title'] ?? '';
     $date = $_POST['date'] ?? '';
-    $time = $_POST['time'] ?? '';
+    $time = $_POST['time'] . ':00';
     $description = $_POST['description'] ?? '';
     $reminder = $_POST['reminder'] ?? '';
     $schedule_id = $_POST['schedule_id'] ?? '';
@@ -596,6 +596,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 document.getElementById('time').min = `${hours}:${minutes}`;
             } else {
                 document.getElementById('time').removeAttribute('min');
+            }
+        });
+        
+        // Initialize time restrictions
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            if (document.getElementById('date').value === today) {
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                document.getElementById('time').min = `${hours}:${minutes}`;
             }
         });
     </script>
