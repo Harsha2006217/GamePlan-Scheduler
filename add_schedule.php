@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validateCSRF();
     $game_id = $_POST['game_id'] ?? '';
     $date = $_POST['date'] ?? '';
-    $time = $_POST['time'] . ':00';  // Append seconds for DB
+    $time = $_POST['time'] . ':00';
     $friends_arr = $_POST['friends'] ?? [];
     $result = addSchedule($game_id, $date, $time, $friends_arr);
     if ($result === true) {
@@ -43,6 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
             color: var(--text-color); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            font-size: 1.1rem;
             margin: 0; 
             padding: 0;
             min-height: 100vh;
@@ -102,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 8px;
             padding: 12px 15px;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .form-control:focus, .form-select:focus { 
@@ -118,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 30px;
             font-weight: 600;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .btn-primary:hover { 
@@ -130,6 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 15px 20px;
             border: none;
             margin-bottom: 20px;
+            font-size: 1rem;
         }
         
         .alert-success { 
@@ -169,6 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: var(--input-bg);
             border-radius: 8px;
             border: 1px solid #444;
+            font-size: 1rem;
         }
         
         .friend-item {
@@ -212,6 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 20px;
             display: flex;
             align-items: center;
+            font-size: 1.4rem;
         }
         
         .section-title i {
@@ -489,20 +496,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 const now = new Date();
                 const hours = now.getHours().toString().padStart(2, '0');
                 const minutes = now.getMinutes().toString().padStart(2, '0');
-                document.getElementById('time').min = `${hours}:${minutes}`;
+                this.nextElementSibling.min = `${hours}:${minutes}`;
             } else {
-                document.getElementById('time').removeAttribute('min');
+                this.nextElementSibling.removeAttribute('min');
             }
         });
         
-        // Initialize time restrictions
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('date');
+            const timeInput = document.getElementById('time');
             const today = new Date().toISOString().split('T')[0];
-            if (document.getElementById('date').value === today) {
+            dateInput.min = today;
+            if (dateInput.value === today) {
                 const now = new Date();
                 const hours = now.getHours().toString().padStart(2, '0');
                 const minutes = now.getMinutes().toString().padStart(2, '0');
-                document.getElementById('time').min = `${hours}:${minutes}`;
+                timeInput.min = `${hours}:${minutes}`;
             }
         });
     </script>

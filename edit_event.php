@@ -60,6 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
             color: var(--text-color); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            font-size: 1.1rem;
             margin: 0; 
             padding: 0;
             min-height: 100vh;
@@ -119,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 8px;
             padding: 12px 15px;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .form-control:focus, .form-select:focus, textarea:focus { 
@@ -135,6 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 30px;
             font-weight: 600;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .btn-primary:hover { 
@@ -147,6 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 15px 20px;
             border: none;
             margin-bottom: 20px;
+            font-size: 1rem;
         }
         
         .alert-success { 
@@ -186,6 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: var(--input-bg);
             border-radius: 8px;
             border: 1px solid #444;
+            font-size: 1rem;
         }
         
         .friend-item {
@@ -229,6 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 20px;
             display: flex;
             align-items: center;
+            font-size: 1.4rem;
         }
         
         .section-title i {
@@ -255,6 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 20px;
+            font-size: 1rem;
         }
         
         @media (max-width: 768px) { 
@@ -602,6 +610,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             titleInput.addEventListener('input', () => updateCount(titleInput, titleCount, 100));
             descInput.addEventListener('input', () => updateCount(descInput, descCount, 500));
+            
+            updateCount(titleInput, titleCount, 100);
+            updateCount(descInput, descCount, 500);
         });
         
         // Set minimum time to current time if today is selected
@@ -619,16 +630,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         });
         
-        // Initialize time restrictions
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            const selectedDate = new Date(document.getElementById('date').value);
+            const dateInput = document.getElementById('date');
+            const timeInput = document.getElementById('time');
+            const selectedDate = new Date(dateInput.value);
             const today = new Date();
             
             if (selectedDate.toDateString() === today.toDateString()) {
                 const now = new Date();
                 const hours = now.getHours().toString().padStart(2, '0');
                 const minutes = now.getMinutes().toString().padStart(2, '0');
-                document.getElementById('time').min = `${hours}:${minutes}`;
+                timeInput.min = `${hours}:${minutes}`;
             }
         });
     </script>

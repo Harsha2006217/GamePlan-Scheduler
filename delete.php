@@ -2,7 +2,6 @@
 require_once 'functions.php';
 requireLogin();
 checkTimeout();
-
 $type = $_GET['type'] ?? '';
 $id = $_GET['id'] ?? 0;
 
@@ -20,12 +19,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     switch ($type) {
         case 'schedule':
-            $success = deleteSchedule($id);
+            $success = softDeleteSchedule($id);
             $message = $success ? 'Schedule deleted successfully!' : 'Failed to delete schedule.';
             break;
             
         case 'event':
-            $success = deleteEvent($id);
+            $success = softDeleteEvent($id);
             $message = $success ? 'Event deleted successfully!' : 'Failed to delete event.';
             break;
             
@@ -63,6 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
             color: var(--text-color); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            font-size: 1.1rem;
             margin: 0; 
             padding: 0;
             min-height: 100vh;
@@ -123,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 30px;
             font-weight: 600;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .btn-danger:hover { 
@@ -139,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 30px;
             font-weight: 600;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .btn-outline-secondary:hover {
@@ -159,11 +162,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 10px;
             padding: 20px;
             margin: 25px 0;
+            font-size: 1rem;
         }
         
         .warning-list {
             text-align: left;
             margin: 15px 0;
+            font-size: 1rem;
         }
         
         .warning-list li {

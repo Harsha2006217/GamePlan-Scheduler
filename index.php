@@ -34,6 +34,8 @@ $reminders = getDueReminders($user_id);
             background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
             color: var(--text-color); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            font-size: 1.1rem;
             margin: 0; 
             padding: 0;
             min-height: 100vh;
@@ -137,6 +139,7 @@ $reminders = getDueReminders($user_id);
             padding: 15px 20px;
             border: none;
             margin-bottom: 20px;
+            font-size: 1rem;
         }
         
         .alert-success { 
@@ -168,6 +171,7 @@ $reminders = getDueReminders($user_id);
             padding: 8px 16px;
             font-weight: 500;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .btn-primary:hover { 
@@ -188,6 +192,7 @@ $reminders = getDueReminders($user_id);
             border: none;
             border-radius: 6px;
             padding: 6px 12px;
+            font-size: 1rem;
         }
         
         .section-title {
@@ -196,6 +201,7 @@ $reminders = getDueReminders($user_id);
             padding-bottom: 10px;
             margin-bottom: 20px;
             font-weight: 600;
+            font-size: 1.4rem;
         }
         
         .stats-grid {
@@ -334,8 +340,8 @@ $reminders = getDueReminders($user_id);
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h3 class="section-title mb-0"><i class="bi bi-calendar-event me-2"></i>Schedules</h3>
                 <div>
-                    <a href="?sort=date_asc" class="btn btn-sm btn-secondary me-2">Date ASC</a>
-                    <a href="?sort=date_desc" class="btn btn-sm btn-secondary">Date DESC</a>
+                    <a href="?sort=date ASC, time ASC" class="btn btn-sm btn-secondary me-2">Date ASC</a>
+                    <a href="?sort=date DESC, time DESC" class="btn btn-sm btn-secondary">Date DESC</a>
                 </div>
             </div>
             
@@ -364,7 +370,7 @@ $reminders = getDueReminders($user_id);
                                         <a href="edit_schedule.php?id=<?php echo $sched['schedule_id']; ?>" class="btn btn-sm btn-primary me-1" aria-label="Edit schedule">
                                             <i class="bi bi-pencil"></i> Edit
                                         </a>
-                                        <a href="delete.php?type=schedule&id=<?php echo $sched['schedule_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this schedule?');" aria-label="Delete schedule">
+                                        <a href="delete.php?type=schedule&id=<?php echo $sched['schedule_id']; ?>" class="btn btn-sm btn-danger" aria-label="Delete schedule">
                                             <i class="bi bi-trash"></i> Delete
                                         </a>
                                     </td>
@@ -381,8 +387,8 @@ $reminders = getDueReminders($user_id);
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h3 class="section-title mb-0"><i class="bi bi-calendar-check me-2"></i>Events</h3>
                 <div>
-                    <a href="?sort=date_asc" class="btn btn-sm btn-secondary me-2">Date ASC</a>
-                    <a href="?sort=date_desc" class="btn btn-sm btn-secondary">Date DESC</a>
+                    <a href="?sort=date ASC, time ASC" class="btn btn-sm btn-secondary me-2">Date ASC</a>
+                    <a href="?sort=date DESC, time DESC" class="btn btn-sm btn-secondary">Date DESC</a>
                 </div>
             </div>
             
@@ -415,7 +421,7 @@ $reminders = getDueReminders($user_id);
                                         <a href="edit_event.php?id=<?php echo $event['event_id']; ?>" class="btn btn-sm btn-primary me-1" aria-label="Edit event">
                                             <i class="bi bi-pencil"></i> Edit
                                         </a>
-                                        <a href="delete.php?type=event&id=<?php echo $event['event_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this event?');" aria-label="Delete event">
+                                        <a href="delete.php?type=event&id=<?php echo $event['event_id']; ?>" class="btn btn-sm btn-danger" aria-label="Delete event">
                                             <i class="bi bi-trash"></i> Delete
                                         </a>
                                     </td>
@@ -476,11 +482,10 @@ $reminders = getDueReminders($user_id);
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Show reminders as notifications
+        // Show reminders
         const reminders = <?php echo json_encode($reminders); ?>;
         if (reminders.length > 0) {
             reminders.forEach(msg => {
-                // Create custom notification
                 const notification = document.createElement('div');
                 notification.className = 'alert alert-warning position-fixed top-0 end-0 m-3';
                 notification.style.zIndex = '1060';
@@ -489,26 +494,17 @@ $reminders = getDueReminders($user_id);
                     <button type="button" class="btn-close btn-close-white float-end" data-bs-dismiss="alert"></button>
                 `;
                 document.body.appendChild(notification);
-                
-                // Auto remove after 10 seconds
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 10000);
+                setTimeout(() => notification.remove(), 10000);
             });
         }
         
-        // Add smooth scrolling
-        document.addEventListener('DOMContentLoaded', function() {
-            const links = document.querySelectorAll('a[href^="#"]');
-            links.forEach(link => {
-                link.addEventListener('click', function(e) {
+        // Smooth scrolling
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('a[href^="#"]').forEach(link => {
+                link.addEventListener('click', e => {
                     e.preventDefault();
-                    const target = document.querySelector(this.getAttribute('href'));
-                    if (target) {
-                        target.scrollIntoView({ behavior: 'smooth' });
-                    }
+                    const target = document.querySelector(link.getAttribute('href'));
+                    target?.scrollIntoView({ behavior: 'smooth' });
                 });
             });
         });

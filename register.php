@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $result = registerUser($username, $email, $password);
     if ($result === true) {
-        setMessage('success', 'Account created successfully. Please log in.');
+        setMessage('success', 'Account created. Log in to start planning.');
         header('Location: login.php');
         exit;
     } else {
@@ -37,17 +37,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
             color: var(--text-color); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            font-size: 1.1rem;
             margin: 0; 
             padding: 0;
             min-height: 100vh;
             display: flex;
             align-items: center;
+            justify-content: center;
         }
         
         .register-container {
             max-width: 450px;
             width: 100%;
-            margin: 20px auto;
             padding: 40px 30px;
             background: var(--card-bg);
             border-radius: 15px;
@@ -74,6 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 8px;
             padding: 12px 15px;
             transition: all 0.3s ease;
+            font-size: 1rem;
+            line-height: 1.5;
         }
         
         .form-control:focus { 
@@ -91,6 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 600;
             letter-spacing: 0.5px;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .btn-primary:hover { 
@@ -102,6 +107,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 8px; 
             padding: 15px;
             border: none;
+            font-size: 1rem;
+            line-height: 1.5;
         }
         
         .alert-success { background: rgba(40,167,69,0.2); color: #28a745; border-left: 4px solid #28a745; }
@@ -111,12 +118,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-weight: 600;
             margin-bottom: 8px;
             color: #ddd;
+            font-size: 1rem;
         }
         
         .login-link {
             text-align: center;
             margin-top: 20px;
             color: #aaa;
+            font-size: 0.95rem;
         }
         
         .login-link a {

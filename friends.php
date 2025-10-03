@@ -2,8 +2,7 @@
 require_once 'functions.php';
 requireLogin();
 checkTimeout();
-$user_id = getUserId();
-$friends = getFriends($user_id);
+$friends = getFriends(getUserId());
 ?>
 
 <!DOCTYPE html>
@@ -28,6 +27,8 @@ $friends = getFriends($user_id);
             background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
             color: var(--text-color); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            font-size: 1.1rem;
             margin: 0; 
             padding: 0;
             min-height: 100vh;
@@ -74,7 +75,7 @@ $friends = getFriends($user_id);
         .section { 
             background: var(--card-bg); 
             border-radius: 12px; 
-            padding: 25px; 
+            padding: 30px; 
             margin-bottom: 25px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             border: 1px solid rgba(255,255,255,0.1);
@@ -87,6 +88,7 @@ $friends = getFriends($user_id);
             padding: 12px 24px;
             font-weight: 600;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .btn-primary:hover { 
@@ -111,6 +113,7 @@ $friends = getFriends($user_id);
             margin-bottom: 15px;
             border-left: 4px solid var(--primary-color);
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .friend-card:hover {
@@ -143,6 +146,7 @@ $friends = getFriends($user_id);
             text-align: center;
             padding: 60px 20px;
             color: #666;
+            font-size: 1rem;
         }
         
         .empty-state i {
@@ -291,7 +295,7 @@ $friends = getFriends($user_id);
                             <div class="text-warning h4 mb-1">
                                 <?php 
                                     $onlineFriends = array_filter($friends, fn($f) => $f['status'] === 'Online');
-                                    echo count($onlineFriends) > 0 ? round((count($onlineFriends) / count($friends)) * 100) : 0;
+                                    echo count($friends) > 0 ? round((count($onlineFriends) / count($friends)) * 100) : 0;
                                 ?>%
                             </div>
                             <div class="text-muted small">Online Rate</div>

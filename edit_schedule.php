@@ -57,6 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
             color: var(--text-color); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            font-size: 1.1rem;
             margin: 0; 
             padding: 0;
             min-height: 100vh;
@@ -116,6 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 8px;
             padding: 12px 15px;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .form-control:focus, .form-select:focus { 
@@ -132,6 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 30px;
             font-weight: 600;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .btn-primary:hover { 
@@ -144,6 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 15px 20px;
             border: none;
             margin-bottom: 20px;
+            font-size: 1rem;
         }
         
         .alert-success { 
@@ -183,6 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: var(--input-bg);
             border-radius: 8px;
             border: 1px solid #444;
+            font-size: 1rem;
         }
         
         .friend-item {
@@ -226,6 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-bottom: 20px;
             display: flex;
             align-items: center;
+            font-size: 1.4rem;
         }
         
         .section-title i {
@@ -238,6 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 20px;
+            font-size: 1rem;
         }
         
         @media (max-width: 768px) { 
@@ -515,7 +523,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         });
         
-        // Initialize time restrictions
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             const selectedDate = new Date(document.getElementById('date').value);
             const today = new Date();

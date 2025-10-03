@@ -2,9 +2,8 @@
 require_once 'functions.php';
 requireLogin();
 checkTimeout();
-$user_id = getUserId();
 $games = getGames();
-$favorites = getFavoriteGames($user_id);
+$favorites = getFavoriteGames(getUserId());
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validateCSRF();
     $game_ids = $_POST['game_ids'] ?? [];
@@ -47,6 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
             color: var(--text-color); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            font-size: 1.1rem;
             margin: 0; 
             padding: 0;
             min-height: 100vh;
@@ -111,6 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 8px;
             padding: 12px 15px;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .form-select:focus { 
@@ -127,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 24px;
             font-weight: 600;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .btn-primary:hover { 
@@ -139,6 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 15px 20px;
             border: none;
             margin-bottom: 20px;
+            font-size: 1rem;
         }
         
         .alert-success { 
@@ -169,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding-bottom: 10px;
             margin-bottom: 20px;
             font-weight: 600;
+            font-size: 1.4rem;
         }
         
         .game-card {
@@ -189,11 +194,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: var(--primary-color);
             font-weight: 600;
             margin-bottom: 5px;
+            font-size: 1.2rem;
         }
         
         .game-description {
             color: #aaa;
-            font-size: 0.9rem;
+            font-size: 1rem;
             line-height: 1.4;
         }
         
@@ -201,6 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-align: center;
             padding: 40px 20px;
             color: #666;
+            font-size: 1rem;
         }
         
         .empty-state i {
@@ -209,8 +216,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #444;
         }
         
+        .stat-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
         @media (max-width: 768px) { 
             .container { padding: 15px; }
+            .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -316,30 +351,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Profile Stats -->
         <div class="section">
             <h3 class="section-title"><i class="bi bi-graph-up me-2"></i>Profile Statistics</h3>
-            <div class="row text-center">
-                <div class="col-md-3 mb-3">
-                    <div class="stat-card">
-                        <div class="stat-number text-primary"><?php echo count($favorites); ?></div>
-                        <div class="stat-label">Favorite Games</div>
-                    </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number text-primary"><?php echo count($favorites); ?></div>
+                    <div class="stat-label">Favorite Games</div>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <div class="stat-card">
-                        <div class="stat-number text-success"><?php echo count(getFriends($user_id)); ?></div>
-                        <div class="stat-label">Friends</div>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-number text-success"><?php echo count(getFriends(getUserId())); ?></div>
+                    <div class="stat-label">Friends</div>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <div class="stat-card">
-                        <div class="stat-number text-warning"><?php echo count(getSchedules($user_id)); ?></div>
-                        <div class="stat-label">Schedules</div>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-number text-warning"><?php echo count(getSchedules(getUserId())); ?></div>
+                    <div class="stat-label">Schedules</div>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <div class="stat-card">
-                        <div class="stat-number text-info"><?php echo count(getEvents($user_id)); ?></div>
-                        <div class="stat-label">Events</div>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-number text-info"><?php echo count(getEvents(getUserId())); ?></div>
+                    <div class="stat-label">Events</div>
                 </div>
             </div>
         </div>
@@ -369,7 +396,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const gameSelect = document.getElementById('game_ids');
             const games = Array.from(gameSelect.options);
             
-            // Create search input
             const searchContainer = document.createElement('div');
             searchContainer.className = 'mb-3';
             searchContainer.innerHTML = `

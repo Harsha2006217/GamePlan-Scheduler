@@ -38,6 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
             color: var(--text-color); 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            font-size: 1.1rem;
             margin: 0; 
             padding: 0;
             min-height: 100vh;
@@ -97,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 8px;
             padding: 12px 15px;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .form-control:focus { 
@@ -113,6 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 30px;
             font-weight: 600;
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .btn-primary:hover { 
@@ -125,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 15px 20px;
             border: none;
             margin-bottom: 20px;
+            font-size: 1rem;
         }
         
         .alert-success { 
@@ -156,6 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-align: center;
             border: 1px solid rgba(255,255,255,0.1);
             transition: all 0.3s ease;
+            font-size: 1rem;
         }
         
         .feature-card:hover {
