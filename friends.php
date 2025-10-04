@@ -1,10 +1,11 @@
 <?php
+// friends.php: List friends
 require_once 'functions.php';
 requireLogin();
 checkTimeout();
 $friends = getFriends(getUserId());
+$msg = getMessage();
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,7 +68,7 @@ $friends = getFriends(getUserId());
         }
         
         .container { 
-            max-width: 1200px; 
+            max-width: 900px; 
             margin: 30px auto; 
             padding: 20px;
         }
@@ -75,25 +76,73 @@ $friends = getFriends(getUserId());
         .section { 
             background: var(--card-bg); 
             border-radius: 12px; 
-            padding: 30px; 
+            padding: 25px; 
             margin-bottom: 25px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             border: 1px solid rgba(255,255,255,0.1);
         }
         
-        .btn-primary { 
+        .friends-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .friend-card {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .friend-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .friend-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
             background: linear-gradient(135deg, var(--primary-color), #0056b3);
-            border: none; 
-            border-radius: 8px;
-            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 15px;
+            color: white;
+        }
+        
+        .friend-name {
+            font-size: 1.2rem;
             font-weight: 600;
-            transition: all 0.3s ease;
+            margin-bottom: 5px;
+        }
+        
+        .friend-status {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .alert { 
+            border-radius: 8px; 
+            padding: 15px 20px;
+            border: none;
+            margin-bottom: 20px;
             font-size: 1rem;
         }
         
-        .btn-primary:hover { 
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,123,255,0.4);
+        .alert-success { 
+            background: rgba(40,167,69,0.2); 
+            color: #28a745; 
+            border-left: 4px solid #28a745; 
+        }
+        
+        .alert-danger { 
+            background: rgba(220,53,69,0.2); 
+            color: #dc3545; 
+            border-left: 4px solid #dc3545; 
         }
         
         footer { 
@@ -106,82 +155,8 @@ $friends = getFriends(getUserId());
             border-top: 1px solid rgba(255,255,255,0.1);
         }
         
-        .friend-card {
-            background: var(--input-bg);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
-            border-left: 4px solid var(--primary-color);
-            transition: all 0.3s ease;
-            font-size: 1rem;
-        }
-        
-        .friend-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-        }
-        
-        .online-status {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        
-        .online {
-            background: rgba(40,167,69,0.2);
-            color: #28a745;
-            border: 1px solid #28a745;
-        }
-        
-        .offline {
-            background: rgba(108,117,125,0.2);
-            color: #6c757d;
-            border: 1px solid #6c757d;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #666;
-            font-size: 1rem;
-        }
-        
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            color: #444;
-        }
-        
-        .friend-actions {
-            margin-top: 15px;
-            display: flex;
-            gap: 10px;
-        }
-        
-        .friend-avatar {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), #0056b3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-            margin-right: 15px;
-        }
-        
         @media (max-width: 768px) { 
             .container { padding: 15px; }
-            .friend-card {
-                text-align: center;
-            }
-            .friend-avatar {
-                margin: 0 auto 15px;
-            }
         }
     </style>
 </head>
@@ -210,128 +185,38 @@ $friends = getFriends(getUserId());
     </header>
     
     <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="h2 mb-0">Your Friends</h1>
-            <a href="add_friend.php" class="btn btn-primary">
-                <i class="bi bi-person-plus me-2"></i>Add Friend
-            </a>
-        </div>
-
-        <div class="section">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="mb-0"><i class="bi bi-people-fill me-2"></i>Friends List</h3>
-                <span class="badge bg-primary"><?php echo count($friends); ?> friends</span>
+        <?php $msg = getMessage(); if ($msg): ?>
+            <div class="alert alert-<?php echo $msg['type']; ?>">
+                <i class="bi bi-<?php echo $msg['type'] === 'success' ? 'check-circle' : 'exclamation-triangle'; ?> me-2"></i>
+                <?php echo htmlspecialchars($msg['msg']); ?>
             </div>
-            
+        <?php endif; ?>
+        
+        <div class="section">
+            <h3 class="section-title"><i class="bi bi-people me-2"></i>My Friends</h3>
             <?php if (empty($friends)): ?>
-                <div class="empty-state">
-                    <i class="bi bi-people"></i>
-                    <h3>No Friends Yet</h3>
-                    <p class="text-muted mb-4">Start building your gaming community by adding friends!</p>
-                    <a href="add_friend.php" class="btn btn-primary btn-lg">
-                        <i class="bi bi-person-plus me-2"></i>Add Your First Friend
-                    </a>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>No friends yet. <a href="add_friend.php" class="alert-link">Add some friends</a> to start gaming together!
                 </div>
             <?php else: ?>
-                <div class="row">
+                <div class="friends-grid">
                     <?php foreach ($friends as $friend): ?>
-                        <div class="col-md-6 col-lg-4 mb-4">
-                            <div class="friend-card">
-                                <div class="d-flex align-items-center mb-3">
-                                    <div class="friend-avatar">
-                                        <i class="bi bi-person-fill"></i>
-                                    </div>
-                                    <div>
-                                        <h5 class="mb-1"><?php echo htmlspecialchars($friend['username']); ?></h5>
-                                        <span class="online-status <?php echo strtolower($friend['status']); ?>">
-                                            <i class="bi bi-circle-fill me-1"></i><?php echo $friend['status']; ?>
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div class="friend-actions">
-                                    <button class="btn btn-sm btn-outline-primary flex-fill" 
-                                            onclick="sendMessage('<?php echo htmlspecialchars($friend['username']); ?>')">
-                                        <i class="bi bi-chat me-1"></i>Message
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-success flex-fill"
-                                            onclick="inviteToGame('<?php echo htmlspecialchars($friend['username']); ?>')">
-                                        <i class="bi bi-controller me-1"></i>Invite
-                                    </button>
-                                </div>
-                                
-                                <?php if ($friend['status'] === 'Online'): ?>
-                                    <div class="mt-2">
-                                        <small class="text-success">
-                                            <i class="bi bi-clock me-1"></i>Active now
-                                        </small>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="mt-2">
-                                        <small class="text-muted">
-                                            <i class="bi bi-clock me-1"></i>Last seen recently
-                                        </small>
-                                    </div>
-                                <?php endif; ?>
+                        <div class="friend-card">
+                            <div class="friend-avatar">
+                                <i class="bi bi-person"></i>
                             </div>
+                            <h5 class="friend-name"><?php echo htmlspecialchars($friend['username']); ?></h5>
+                            <p class="friend-status">
+                                <i class="bi bi-circle-fill me-1 <?php echo $friend['status'] === 'Online' ? 'text-success' : 'text-secondary'; ?>"></i>
+                                <?php echo $friend['status']; ?>
+                            </p>
                         </div>
                     <?php endforeach; ?>
                 </div>
-                
-                <!-- Friends Statistics -->
-                <div class="mt-4 p-4 rounded" style="background: rgba(255,255,255,0.05);">
-                    <div class="row text-center">
-                        <div class="col-6 col-md-3 mb-3">
-                            <div class="text-primary h4 mb-1">
-                                <?php echo count(array_filter($friends, fn($f) => $f['status'] === 'Online')); ?>
-                            </div>
-                            <div class="text-muted small">Online Now</div>
-                        </div>
-                        <div class="col-6 col-md-3 mb-3">
-                            <div class="text-success h4 mb-1"><?php echo count($friends); ?></div>
-                            <div class="text-muted small">Total Friends</div>
-                        </div>
-                        <div class="col-6 col-md-3 mb-3">
-                            <div class="text-warning h4 mb-1">
-                                <?php 
-                                    $onlineFriends = array_filter($friends, fn($f) => $f['status'] === 'Online');
-                                    echo count($friends) > 0 ? round((count($onlineFriends) / count($friends)) * 100) : 0;
-                                ?>%
-                            </div>
-                            <div class="text-muted small">Online Rate</div>
-                        </div>
-                        <div class="col-6 col-md-3 mb-3">
-                            <div class="text-info h4 mb-1"><?php echo count($friends); ?></div>
-                            <div class="text-muted small">Gaming Buddies</div>
-                        </div>
-                    </div>
-                </div>
             <?php endif; ?>
-        </div>
-        
-        <!-- Quick Actions -->
-        <div class="section">
-            <h4 class="mb-3"><i class="bi bi-lightning me-2"></i>Quick Actions</h4>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <a href="add_friend.php" class="btn btn-outline-primary w-100 h-100 py-3">
-                        <i class="bi bi-person-plus display-6 mb-2 d-block"></i>
-                        Add Friend
-                    </a>
-                </div>
-                <div class="col-md-4">
-                    <button class="btn btn-outline-success w-100 h-100 py-3" onclick="inviteAllOnline()">
-                        <i class="bi bi-controller display-6 mb-2 d-block"></i>
-                        Invite Online Friends
-                    </button>
-                </div>
-                <div class="col-md-4">
-                    <button class="btn btn-outline-info w-100 h-100 py-3" onclick="viewFriendSuggestions()">
-                        <i class="bi bi-people display-6 mb-2 d-block"></i>
-                        Find Friends
-                    </button>
-                </div>
-            </div>
+            <a href="add_friend.php" class="btn btn-primary mt-3">
+                <i class="bi bi-person-plus me-2"></i>Add Friend
+            </a>
         </div>
     </div>
     
@@ -344,32 +229,5 @@ $friends = getFriends(getUserId());
     </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function sendMessage(username) {
-            alert(`Message feature coming soon! Would send message to ${username}`);
-        }
-        
-        function inviteToGame(username) {
-            alert(`Game invitation sent to ${username}!`);
-        }
-        
-        function inviteAllOnline() {
-            const onlineFriends = <?php echo json_encode(array_filter($friends, fn($f) => $f['status'] === 'Online')); ?>;
-            if (onlineFriends.length > 0) {
-                alert(`Invitations sent to ${onlineFriends.length} online friends!`);
-            } else {
-                alert('No online friends to invite at the moment.');
-            }
-        }
-        
-        function viewFriendSuggestions() {
-            alert('Friend suggestions feature coming soon!');
-        }
-        
-        // Auto-refresh online status every 30 seconds
-        setInterval(() => {
-            window.location.reload();
-        }, 30000);
-    </script>
 </body>
 </html>
