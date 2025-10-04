@@ -1,20 +1,24 @@
 <?php
-// login.php: Secure login with validation
+// login.php: Secure login page with validation and CSRF protection
+// Redirects to index if successful, shows errors otherwise
+// Dark theme, responsive, beautiful UI
+
 require_once 'functions.php';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     validateCSRF();
-    $username = $_POST['username'] ?? '';
+    $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $result = loginUser($username, $password);
     if ($result === true) {
         header('Location: index.php');
         exit;
     } else {
-        setMessage('error', $result);
+        setMessage('danger', $result);
     }
 }
 $msg = getMessage();
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,127 +27,7 @@ $msg = getMessage();
     <title>Login - GamePlan Scheduler</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #007bff;
-            --dark-bg: #121212;
-            --card-bg: #1e1e1e;
-            --input-bg: #2c2c2c;
-            --text-color: #ffffff;
-        }
-        
-        body { 
-            background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #16213e 100%);
-            color: var(--text-color); 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            font-size: 1.1rem;
-            margin: 0; 
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .login-container {
-            max-width: 450px;
-            width: 100%;
-            padding: 40px 30px;
-            background: var(--card-bg);
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .logo {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .logo i {
-            font-size: 3rem;
-            color: var(--primary-color);
-            margin-bottom: 10px;
-        }
-        
-        .form-control { 
-            background: var(--input-bg); 
-            color: var(--text-color); 
-            border: 1px solid #444; 
-            border-radius: 8px;
-            padding: 12px 15px;
-            transition: all 0.3s ease;
-            font-size: 1rem;
-            line-height: 1.5;
-        }
-        
-        .form-control:focus { 
-            border-color: var(--primary-color); 
-            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
-            background: var(--input-bg);
-            color: var(--text-color);
-        }
-        
-        .btn-primary { 
-            background: linear-gradient(135deg, var(--primary-color), #0056b3);
-            border: none; 
-            border-radius: 8px;
-            padding: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            transition: all 0.3s ease;
-            font-size: 1rem;
-        }
-        
-        .btn-primary:hover { 
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,123,255,0.4);
-        }
-        
-        .alert { 
-            border-radius: 8px; 
-            padding: 15px;
-            border: none;
-            font-size: 1rem;
-            line-height: 1.5;
-        }
-        
-        .alert-success { background: rgba(40,167,69,0.2); color: #28a745; border-left: 4px solid #28a745; }
-        .alert-danger { background: rgba(220,53,69,0.2); color: #dc3545; border-left: 4px solid #dc3545; }
-        
-        .form-label {
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #ddd;
-            font-size: 1rem;
-        }
-        
-        .register-link {
-            text-align: center;
-            margin-top: 20px;
-            color: #aaa;
-            font-size: 0.95rem;
-        }
-        
-        .register-link a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .register-link a:hover {
-            text-decoration: underline;
-        }
-        
-        @media (max-width: 768px) { 
-            .login-container { 
-                margin: 10px;
-                padding: 30px 20px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="login-container">
@@ -152,59 +36,31 @@ $msg = getMessage();
             <h2 class="mb-0">GamePlan Scheduler</h2>
             <p class="text-muted">Welcome Back, Gamer!</p>
         </div>
-        
-        <?php $msg = getMessage(); if ($msg): ?>
+
+        <?php if ($msg): ?>
             <div class="alert alert-<?php echo $msg['type']; ?> mb-4">
                 <i class="bi bi-<?php echo $msg['type'] === 'success' ? 'check-circle' : 'exclamation-triangle'; ?> me-2"></i>
                 <?php echo htmlspecialchars($msg['msg']); ?>
             </div>
         <?php endif; ?>
-        
-        <form method="POST" onsubmit="return validateLoginForm();">
-            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
-            
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCSRF()); ?>">
             <div class="mb-4">
-                <label for="username" class="form-label">
-                    <i class="bi bi-person me-2"></i>Username
-                </label>
-                <input type="text" class="form-control" id="username" name="username" required 
-                       placeholder="Enter your username" aria-label="Username">
+                <label for="username" class="form-label"><i class="bi bi-person me-2"></i>Username</label>
+                <input type="text" class="form-control" id="username" name="username" required placeholder="Enter your username">
             </div>
-            
             <div class="mb-4">
-                <label for="password" class="form-label">
-                    <i class="bi bi-lock me-2"></i>Password
-                </label>
-                <input type="password" class="form-control" id="password" name="password" required 
-                       placeholder="Enter your password" aria-label="Password">
+                <label for="password" class="form-label"><i class="bi bi-lock me-2"></i>Password</label>
+                <input type="password" class="form-control" id="password" name="password" required placeholder="Enter your password">
             </div>
-            
-            <button type="submit" class="btn btn-primary w-100 py-3">
-                <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
-            </button>
+            <button type="submit" class="btn btn-primary w-100 py-3"><i class="bi bi-box-arrow-in-right me-2"></i>Sign In</button>
         </form>
-        
+
         <div class="register-link">
             New to GamePlan? <a href="register.php">Create an account</a>
         </div>
     </div>
-    <script>
-        function validateLoginForm() {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            
-            if (!username) {
-                alert('Please enter your username.');
-                return false;
-            }
-            
-            if (!password) {
-                alert('Please enter your password.');
-                return false;
-            }
-            
-            return true;
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>

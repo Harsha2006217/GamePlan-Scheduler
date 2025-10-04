@@ -1,5 +1,6 @@
 <?php
-session_start();
-session_destroy();
-header('Location: login.php');
-exit;
+// logout.php: Secure logout script
+// Destroys session and redirects to login
+
+require_once 'functions.php';
+logoutUser();
