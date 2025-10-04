@@ -31,10 +31,12 @@ CREATE TABLE IF NOT EXISTS games (
     INDEX idx_titel (titel)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- UserGames table: Maps users to favorite games (M:N relationship) with composite key
+-- UserGames table: Maps users to favorite games with denormalized title and description for quick access
 CREATE TABLE IF NOT EXISTS user_games (
     user_id INT NOT NULL,
     game_id INT NOT NULL,
+    gametitel VARCHAR(100) NOT NULL,
+    game_description TEXT,
     PRIMARY KEY (user_id, game_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (game_id) REFERENCES games(game_id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -59,7 +61,6 @@ CREATE TABLE IF NOT EXISTS schedules (
     schedule_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     game_id INT NOT NULL,
-    game VARCHAR(100) NOT NULL,
     date DATE NOT NULL,
     time TIME NOT NULL,
     friends TEXT,  -- Comma-separated friend IDs for sharing
@@ -115,14 +116,16 @@ INSERT INTO games (titel, description) VALUES
 ('Minecraft', 'Creative sandbox game for building and survival adventures.');
 
 -- UserGames: testuser favorites both games
-INSERT INTO user_games (user_id, game_id) VALUES (1, 1), (1, 2);
+INSERT INTO user_games (user_id, game_id, gametitel, game_description) VALUES
+(1, 1, 'Fortnite', 'Epic battle royale game with building and cross-platform play.'),
+(1, 2, 'Minecraft', 'Creative sandbox game for building and survival adventures.');
 
 -- Friends: testuser friends with friend1
 INSERT INTO friends (user_id, friend_user_id, status) VALUES (1, 2, 'online');
 
 -- Schedules: Sample schedule for testuser
-INSERT INTO schedules (user_id, game_id, game, date, time, friends, reminder) VALUES
-(1, 1, 'Fortnite', '2025-10-10', '15:00:00', '2', '1hour');
+INSERT INTO schedules (user_id, game_id, date, time, friends, reminder) VALUES
+(1, 1, '2025-10-10', '15:00:00', '2', '1hour');
 
 -- Events: Sample event linked to schedule
 INSERT INTO events (schedule_id, user_id, title, date, time, description, reminder) VALUES

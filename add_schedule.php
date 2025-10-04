@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $reminder = $_POST['reminder'] ?? 'none';
     $result = addSchedule($game_id, $game, $date, $time, $friends_selected, $reminder);
     if ($result === true) {
-        setMessage('success', 'Schedule added successfully.');
+        setMessage('success', 'Schedule added.');
         header('Location: index.php');
         exit;
     } else {
@@ -82,39 +82,26 @@ $msg = getMessage();
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label for="game" class="form-label">Game Name (Custom)</label>
-                    <input type="text" class="form-control" id="game" name="game" placeholder="Enter custom game name if needed">
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="date" class="form-label">Date</label>
-                        <input type="date" class="form-control" id="date" name="date" required min="<?php echo date('Y-m-d'); ?>">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="time" class="form-label">Time</label>
-                        <input type="time" class="form-control" id="time" name="time" required>
-                    </div>
+                    <label for="game" class="form-label">Game Name</label>
+                    <input type="text" class="form-control" id="game" name="game" required>
                 </div>
                 <div class="mb-3">
-                    <label>Friends to Share With</label>
-                    <div class="friends-grid">
-                        <?php foreach ($friends as $friend): ?>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="friends[]" value="<?php echo $friend['friend_user_id']; ?>" id="friend_<?php echo $friend['friend_user_id']; ?>">
-                                <label class="form-check-label" for="friend_<?php echo $friend['friend_user_id']; ?>"><?php echo htmlspecialchars($friend['username']); ?> (<?php echo $friend['calculated_status']; ?>)</label>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" required>
                 </div>
                 <div class="mb-3">
-                    <label for="reminder" class="form-label">Set Reminder</label>
+                    <label for="time" class="form-label">Time</label>
+                    <input type="time" class="form-control" id="time" name="time" required>
+                </div>
+                <div class="mb-3">
+                    <label for="reminder" class="form-label">Reminder</label>
                     <select class="form-select" id="reminder" name="reminder">
                         <option value="none">None</option>
                         <option value="1hour">1 Hour Before</option>
                         <option value="1day">1 Day Before</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary"><i class="bi bi-calendar-plus me-2"></i>Add Schedule</button>
+                <button type="submit" class="btn btn-primary">Add Schedule</button>
             </form>
         </div>
     </div>
@@ -126,6 +113,5 @@ $msg = getMessage();
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
 </body>
 </html>

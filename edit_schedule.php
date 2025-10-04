@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $reminder = $_POST['reminder'] ?? 'none';
     $result = editSchedule($schedule_id, $game_id, $game, $date, $time, $friends_selected, $reminder);
     if ($result === true) {
-        setMessage('success', 'Schedule updated successfully.');
+        setMessage('success', 'Schedule updated.');
         header('Location: index.php');
         exit;
     } else {
@@ -53,7 +53,7 @@ $msg = getMessage();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+-body>
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark">
             <div class="container">
@@ -66,7 +66,7 @@ $msg = getMessage();
                         <li class="nav-item"><a class="nav-link" href="index.php"><i class="bi bi-house me-1"></i>Home</a></li>
                         <li class="nav-item"><a class="nav-link" href="profile.php"><i class="bi bi-person me-1"></i>Profile</a></li>
                         <li class="nav-item"><a class="nav-link" href="friends.php"><i class="bi bi-people me-1"></i>Friends</a></li>
-                        <li class="nav-item"><a class="nav-link" href="add_schedule.php"><i class="bi bi-calendar-plus me-1"></i>Add Schedule</a></li>
+                        <li class="nav-item"><a class="nav-link active" href="add_schedule.php"><i class="bi bi-calendar-plus me-1"></i>Add Schedule</a></li>
                         <li class="nav-item"><a class="nav-link" href="add_event.php"><i class="bi bi-calendar-event me-1"></i>Add Event</a></li>
                         <li class="nav-item"><a class="nav-link" href="logout.php"><i class="bi bi-box-arrow-right me-1"></i>Logout</a></li>
                     </ul>
@@ -92,46 +92,31 @@ $msg = getMessage();
                     <select class="form-select" id="game_id" name="game_id" required>
                         <option value="">Choose a game...</option>
                         <?php foreach ($games as $game): ?>
-                            <option value="<?php echo $game['game_id']; ?>" <?php echo $game['game_id'] == $schedule['game_id'] ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($game['titel']); ?>
-                            </option>
+                            <option value="<?php echo $game['game_id']; ?>" <?php echo $game['game_id'] == $schedule['game_id'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($game['titel']); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label for="game" class="form-label">Game Name (Custom)</label>
-                    <input type="text" class="form-control" id="game" name="game" value="<?php echo htmlspecialchars($schedule['game']); ?>">
-                </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="date" class="form-label">Date</label>
-                        <input type="date" class="form-control" id="date" name="date" required min="<?php echo date('Y-m-d'); ?>" value="<?php echo $schedule['date']; ?>">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="time" class="form-label">Time</label>
-                        <input type="time" class="form-control" id="time" name="time" required value="<?php echo substr($schedule['time'], 0, 5); ?>">
-                    </div>
+                    <label for="game" class="form-label">Game Name</label>
+                    <input type="text" class="form-control" id="game" name="game" value="<?php echo htmlspecialchars($schedule['game']); ?>" required>
                 </div>
                 <div class="mb-3">
-                    <label>Friends to Share With</label>
-                    <div class="friends-grid">
-                        <?php foreach ($friends as $friend): ?>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="friends[]" value="<?php echo $friend['friend_user_id']; ?>" id="friend_<?php echo $friend['friend_user_id']; ?>" <?php echo in_array($friend['friend_user_id'], $selected_friends) ? 'checked' : ''; ?>>
-                                <label class="form-check-label" for="friend_<?php echo $friend['friend_user_id']; ?>"><?php echo htmlspecialchars($friend['username']); ?> (<?php echo $friend['calculated_status']; ?>)</label>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" value="<?php echo $schedule['date']; ?>" required>
                 </div>
                 <div class="mb-3">
-                    <label for="reminder" class="form-label">Set Reminder</label>
+                    <label for="time" class="form-label">Time</label>
+                    <input type="time" class="form-control" id="time" name="time" value="<?php echo substr($schedule['time'], 0, 5); ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="reminder" class="form-label">Reminder</label>
                     <select class="form-select" id="reminder" name="reminder">
                         <option value="none" <?php echo $schedule['reminder'] === 'none' ? 'selected' : ''; ?>>None</option>
                         <option value="1hour" <?php echo $schedule['reminder'] === '1hour' ? 'selected' : ''; ?>>1 Hour Before</option>
                         <option value="1day" <?php echo $schedule['reminder'] === '1day' ? 'selected' : ''; ?>>1 Day Before</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-2"></i>Update Schedule</button>
+                <button type="submit" class="btn btn-primary">Update Schedule</button>
             </form>
         </div>
     </div>
@@ -143,6 +128,5 @@ $msg = getMessage();
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
 </body>
 </html>

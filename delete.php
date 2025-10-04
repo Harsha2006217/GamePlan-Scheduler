@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     validateCSRF();
     $result = deleteItem($type, $id);
     if ($result === true) {
-        setMessage('success', ucfirst($type) . ' deleted successfully.');
+        setMessage('success', ucfirst($type) . ' deleted.');
     } else {
         setMessage('danger', $result);
     }
@@ -69,11 +69,11 @@ $msg = getMessage();
 
         <div class="section">
             <h3 class="section-title"><i class="bi bi-trash me-2"></i>Confirm Deletion</h3>
-            <p>Are you sure you want to delete this <?php echo $type; ?>? This action cannot be undone (soft delete used for recovery if needed).</p>
+            <p>Are you sure you want to delete this <?php echo $type; ?>?</p>
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCSRF()); ?>">
-                <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-2"></i>Yes, Delete</button>
-                <a href="index.php" class="btn btn-secondary"><i class="bi bi-arrow-left me-2"></i>Cancel</a>
+                <button type="submit" class="btn btn-danger">Yes, Delete</button>
+                <a href="index.php" class="btn btn-secondary">No, Cancel</a>
             </form>
         </div>
     </div>
@@ -85,6 +85,5 @@ $msg = getMessage();
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
 </body>
 </html>

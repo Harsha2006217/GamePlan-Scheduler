@@ -208,7 +208,7 @@ function getSchedules($user_id) {
 }
 
 // Add a new schedule with validation
-function addSchedule($game_id, $game, $date, $time, $friends, $reminder) {
+function addSchedule($game_id, $date, $time, $friends, $reminder) {
     $user_id = getUserId();
     $pdo = getPDO();
     if (!is_numeric($game_id) || $game_id <= 0) {
@@ -228,15 +228,15 @@ function addSchedule($game_id, $game, $date, $time, $friends, $reminder) {
     $time .= ':00';  // Append seconds for consistency
     $friends_str = implode(',', array_map('intval', (array)$friends));  // Sanitize friend IDs
     $stmt = $pdo->prepare('
-        INSERT INTO schedules (user_id, game_id, game, date, time, friends, reminder) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO schedules (user_id, game_id, date, time, friends, reminder) 
+        VALUES (?, ?, ?, ?, ?, ?)
     ');
-    $stmt->execute([$user_id, $game_id, $game, $date, $time, $friends_str, $reminder]);
+    $stmt->execute([$user_id, $game_id, $date, $time, $friends_str, $reminder]);
     return true;
 }
 
 // Edit an existing schedule with validation
-function editSchedule($schedule_id, $game_id, $game, $date, $time, $friends, $reminder) {
+function editSchedule($schedule_id, $game_id, $date, $time, $friends, $reminder) {
     $user_id = getUserId();
     $pdo = getPDO();
     $stmt = $pdo->prepare('SELECT COUNT(*) FROM schedules WHERE schedule_id = ? AND user_id = ? AND deleted_at IS NULL');
@@ -261,10 +261,10 @@ function editSchedule($schedule_id, $game_id, $game, $date, $time, $friends, $re
     $time .= ':00';
     $friends_str = implode(',', array_map('intval', (array)$friends));
     $stmt = $pdo->prepare('
-        UPDATE schedules SET game_id = ?, game = ?, date = ?, time = ?, friends = ?, reminder = ? 
+        UPDATE schedules SET game_id = ?, date = ?, time = ?, friends = ?, reminder = ? 
         WHERE schedule_id = ? AND user_id = ?
     ');
-    $stmt->execute([$game_id, $game, $date, $time, $friends_str, $reminder, $schedule_id, $user_id]);
+    $stmt->execute([$game_id, $date, $time, $friends_str, $reminder, $schedule_id, $user_id]);
     return true;
 }
 
@@ -374,4 +374,3 @@ function getReminders($user_id) {
 
 // Call generateCSRF() to ensure token is always available
 generateCSRF();
-?>

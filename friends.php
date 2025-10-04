@@ -54,12 +54,12 @@ $msg = getMessage();
         <div class="section">
             <h3 class="section-title"><i class="bi bi-people me-2"></i>My Friends</h3>
             <?php if (empty($friends)): ?>
-                <p class="text-muted">No friends yet. <a href="add_friend.php">Add a friend</a> to get started!</p>
+                <p class="text-muted">No friends yet. <a href="add_friend.php">Add a friend</a>!</p>
             <?php else: ?>
                 <div class="row">
                     <?php foreach ($friends as $friend): ?>
-                        <div class="col-md-4 mb-3">
-                            <div class="card">
+                        <div class="col-md-3 mb-3">
+                            <div class="card text-center">
                                 <h6 class="card-title"><?php echo htmlspecialchars($friend['username']); ?></h6>
                                 <span class="badge bg-<?php echo $friend['calculated_status'] === 'online' ? 'success' : 'secondary'; ?>">
                                     <i class="bi bi-circle-fill me-1"></i><?php echo $friend['calculated_status']; ?>
@@ -80,6 +80,5 @@ $msg = getMessage();
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
 </body>
 </html>

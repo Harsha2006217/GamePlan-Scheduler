@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $shared_with = $_POST['shared_with'] ?? [];
     $result = addEvent($schedule_id, $title, $date, $time, $description, $reminder, $shared_with);
     if ($result === true) {
-        setMessage('success', 'Event added successfully.');
+        setMessage('success', 'Event added.');
         header('Location: index.php');
         exit;
     } else {
@@ -74,52 +74,30 @@ $msg = getMessage();
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCSRF()); ?>">
                 <div class="mb-3">
-                    <label for="schedule_id" class="form-label">Link to Schedule (Optional)</label>
-                    <select class="form-select" id="schedule_id" name="schedule_id">
-                        <option value="">No link</option>
-                        <?php foreach ($schedules as $sched): ?>
-                            <option value="<?php echo $sched['schedule_id']; ?>"><?php echo htmlspecialchars($sched['game_titel'] . ' on ' . $sched['date']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <label for="title" class="form-label">Title</label>
+                    <input type="text" class="form-control" id="title" name="title" required>
                 </div>
                 <div class="mb-3">
-                    <label for="title" class="form-label">Title</label>
-                    <input type="text" class="form-control" id="title" name="title" required maxlength="100" placeholder="Enter event title">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" required>
                 </div>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="date" class="form-label">Date</label>
-                        <input type="date" class="form-control" id="date" name="date" required min="<?php echo date('Y-m-d'); ?>">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="time" class="form-label">Time</label>
-                        <input type="time" class="form-control" id="time" name="time" required>
-                    </div>
+                <div class="mb-3">
+                    <label for="time" class="form-label">Time</label>
+                    <input type="time" class="form-control" id="time" name="time" required>
                 </div>
                 <div class="mb-3">
                     <label for="description" class="form-label">Description</label>
-                    <textarea class="form-control" id="description" name="description" rows="4" maxlength="500" placeholder="Describe the event"></textarea>
+                    <textarea class="form-control" id="description" name="description" rows="4"></textarea>
                 </div>
                 <div class="mb-3">
-                    <label>Share With Friends</label>
-                    <div class="friends-grid">
-                        <?php foreach ($friends as $friend): ?>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="shared_with[]" value="<?php echo $friend['friend_user_id']; ?>" id="share_<?php echo $friend['friend_user_id']; ?>">
-                                <label class="form-check-label" for="share_<?php echo $friend['friend_user_id']; ?>"><?php echo htmlspecialchars($friend['username']); ?> (<?php echo $friend['calculated_status']; ?>)</label>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="reminder" class="form-label">Set Reminder</label>
+                    <label for="reminder" class="form-label">Reminder</label>
                     <select class="form-select" id="reminder" name="reminder">
                         <option value="none">None</option>
                         <option value="1hour">1 Hour Before</option>
                         <option value="1day">1 Day Before</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary"><i class="bi bi-calendar-event me-2"></i>Add Event</button>
+                <button type="submit" class="btn btn-primary">Add Event</button>
             </form>
         </div>
     </div>
@@ -131,6 +109,5 @@ $msg = getMessage();
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
 </body>
 </html>
