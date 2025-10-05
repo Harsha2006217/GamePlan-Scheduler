@@ -165,16 +165,6 @@ function addFriend($friend_username) {
     return true;
 }
 
-function editFriend($friend_id, $new_username) {
-    $user_id = getUserId();
-    $pdo = getPDO();
-    // Assuming edit means changing friend details, but since friends are users, perhaps rename or something. For simplicity, implement as remove and add new.
-    // But to match structure, let's assume it's for updating friend notes or something. Since not specified, implement basic remove.
-    $stmt = $pdo->prepare("DELETE FROM Friends WHERE friend_id = :friend_id AND user_id = :user_id");
-    $stmt->execute(['friend_id' => $friend_id, 'user_id' => $user_id]);
-    return $stmt->rowCount() > 0;
-}
-
 function getFriends($user_id) {
     $pdo = getPDO();
     $stmt = $pdo->prepare("SELECT u.user_id, u.username, 
