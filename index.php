@@ -3,7 +3,7 @@
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
 // Description: Main dashboard showing friends, favorites, schedules, events, and merged calendar.
-// Includes session check, message display, and responsive tables/cards.
+// Includes session check, message display, and responsive tables/cards with sorting.
 
 require_once 'functions.php';
 
@@ -16,10 +16,13 @@ if (!isLoggedIn()) {
 $userId = getUserId();
 updateLastActivity(getDBConnection(), $userId);
 
+$sortSchedules = $_GET['sort_schedules'] ?? 'date ASC';
+$sortEvents = $_GET['sort_events'] ?? 'date ASC';
+
 $friends = getFriends($userId);
 $favorites = getFavoriteGames($userId);
-$schedules = getSchedules($userId);
-$events = getEvents($userId);
+$schedules = getSchedules($userId, $sortSchedules);
+$events = getEvents($userId, $sortEvents);
 $calendarItems = getCalendarItems($userId);
 
 ?>
@@ -33,44 +36,56 @@ $calendarItems = getCalendarItems($userId);
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-dark text-light">
-    <header class="fixed-top bg-primary p-3">
-        <div class="container d-flex justify-content-between align-items-center">
-            <h1 class="h4 mb-0">GamePlan Scheduler</h1>
-            <nav>
-                <ul class="nav">
-                    <li class="nav-item"><a class="nav-link text-light" href="profile.php">Profile</a></li>
-                    <li class="nav-item"><a class="nav-link text-light" href="add_friend.php">Add Friend</a></li>
-                    <li class="nav-item"><a class="nav-link text-light" href="add_schedule.php">Add Schedule</a></li>
-                    <li class="nav-item"><a class="nav-link text-light" href="add_event.php">Add Event</a></li>
-                    <li class="nav-item"><a class="nav-link text-light" href="?logout=1">Logout</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
+    <?php include 'header.php'; ?>
 
     <main class="container mt-5 pt-5">
         <?php echo getMessage(); ?>
 
         <section class="mb-4">
             <h2>Friends List</h2>
-            <ul class="list-group">
-                <?php foreach ($friends as $friend): ?>
-                    <li class="list-group-item bg-secondary"><?php echo safeEcho($friend['username']); ?> - <?php echo $friend['status']; ?></li>
-                <?php endforeach; ?>
-            </ul>
+            <table class="table table-dark table-bordered">
+                <thead class="bg-info">
+                    <tr><th>Username</th><th>Status</th><th>Note</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($friends as $friend): ?>
+                        <tr>
+                            <td><?php echo safeEcho($friend['username']); ?></td>
+                            <td><?php echo $friend['status']; ?></td>
+                            <td><?php echo safeEcho($friend['note']); ?></td>
+                            <td>
+                                <a href="edit_friend.php?id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-warning">Edit Note</a>
+                                <a href="delete.php?type=friend&id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Remove</a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </section>
 
         <section class="mb-4">
             <h2>Favorite Games</h2>
-            <ul class="list-group">
-                <?php foreach ($favorites as $game): ?>
-                    <li class="list-group-item bg-secondary"><?php echo safeEcho($game['titel']); ?>: <?php echo safeEcho($game['description']); ?></li>
-                <?php endforeach; ?>
-            </ul>
+            <table class="table table-dark table-bordered">
+                <thead class="bg-info">
+                    <tr><th>Title</th><th>Description</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($favorites as $game): ?>
+                        <tr>
+                            <td><?php echo safeEcho($game['titel']); ?></td>
+                            <td><?php echo safeEcho($game['description']); ?></td>
+                            <td>
+                                <a href="edit_favorite.php?id=<?php echo $game['game_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
+                                <a href="delete.php?type=favorite&id=<?php echo $game['game_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </section>
 
         <section class="mb-4">
-            <h2>Schedules</h2>
+            <h2>Schedules <a href="?sort_schedules=date_ASC" class="btn btn-sm btn-light">Sort Date ASC</a> <a href="?sort_schedules=date_DESC" class="btn btn-sm btn-light">DESC</a></h2>
             <table class="table table-dark table-bordered">
                 <thead class="bg-info">
                     <tr><th>Game</th><th>Date</th><th>Time</th><th>Friends</th><th>Actions</th></tr>
@@ -93,10 +108,10 @@ $calendarItems = getCalendarItems($userId);
         </section>
 
         <section class="mb-4">
-            <h2>Events</h2>
+            <h2>Events <a href="?sort_events=date_ASC" class="btn btn-sm btn-light">Sort Date ASC</a> <a href="?sort_events=date_DESC" class="btn btn-sm btn-light">DESC</a></h2>
             <table class="table table-dark table-bordered">
                 <thead class="bg-info">
-                    <tr><th>Title</th><th>Date</th><th>Time</th><th>Description</th><th>Reminder</th><th>Shared With</th><th>Actions</th></tr>
+                    <tr><th>Title</th><th>Date</th><th>Time</th><th>Description</th><th>Reminder</th><th>Link</th><th>Shared With</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($events as $event): ?>
@@ -106,6 +121,7 @@ $calendarItems = getCalendarItems($userId);
                             <td><?php echo safeEcho($event['time']); ?></td>
                             <td><?php echo safeEcho($event['description']); ?></td>
                             <td><?php echo safeEcho($event['reminder']); ?></td>
+                            <td><?php echo safeEcho($event['external_link']); ?></td>
                             <td><?php echo safeEcho($event['shared_with']); ?></td>
                             <td>
                                 <a href="edit_event.php?id=<?php echo $event['event_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
@@ -127,6 +143,7 @@ $calendarItems = getCalendarItems($userId);
                                 <h5 class="card-title"><?php echo safeEcho($item['title'] ?? $item['game_titel']); ?> - <?php echo safeEcho($item['date'] . ' at ' . $item['time']); ?></h5>
                                 <?php if (isset($item['description'])): ?><p><?php echo safeEcho($item['description']); ?></p><?php endif; ?>
                                 <?php if (isset($item['reminder'])): ?><p>Reminder: <?php echo safeEcho($item['reminder']); ?></p><?php endif; ?>
+                                <?php if (isset($item['external_link'])): ?><p>Link: <a href="<?php echo safeEcho($item['external_link']); ?>">View</a></p><?php endif; ?>
                                 <?php if (isset($item['shared_with'])): ?><p>Shared with: <?php echo safeEcho($item['shared_with']); ?></p><?php endif; ?>
                             </div>
                         </div>
@@ -136,9 +153,7 @@ $calendarItems = getCalendarItems($userId);
         </section>
     </main>
 
-    <footer class="bg-secondary p-3 text-center fixed-bottom">
-        © 2025 GamePlan Scheduler by Harsha Kanaparthi | <a href="privacy.php" class="text-light">Privacy Policy</a> | <a href="contact.php" class="text-light">Contact</a>
-    </footer>
+    <?php include 'footer.php'; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>

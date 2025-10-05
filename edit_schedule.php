@@ -28,17 +28,16 @@ if (!$schedule) {
     exit;
 }
 
-$games = getGames();
 $friends = getFriends($userId);
 $selectedFriends = explode(',', $schedule['friends']);
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $gameId = $_POST['game_id'] ?? '';
+    $gameTitle = $_POST['game_title'] ?? '';
     $date = $_POST['date'] ?? '';
     $time = $_POST['time'] ?? '';
     $selectedFriendsPost = $_POST['friends'] ?? [];
-    $error = editSchedule($userId, $id, $gameId, $date, $time, $selectedFriendsPost);
+    $error = editSchedule($userId, $id, $gameTitle, $date, $time, $selectedFriendsPost);
     if (!$error) {
         setMessage('success', 'Schedule updated successfully!');
         header("Location: index.php");
@@ -66,20 +65,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <h2>Edit Schedule</h2>
         <form method="POST" onsubmit="return validateScheduleForm();">
             <div class="mb-3">
-                <label for="game_id" class="form-label">Game</label>
-                <select id="game_id" name="game_id" class="form-select" required>
-                    <?php foreach ($games as $game): ?>
-                        <option value="<?php echo $game['game_id']; ?>" <?php if ($game['game_id'] == $schedule['game_id']) echo 'selected'; ?>><?php echo safeEcho($game['titel']); ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label for="game_title" class="form-label">Game Title</label>
+                <input type="text" id="game_title" name="game_title" class="form-control" required maxlength="100" value="<?php echo safeEcho($schedule['game_titel']); ?>" aria-label="Game Title">
             </div>
             <div class="mb-3">
                 <label for="date" class="form-label">Date</label>
-                <input type="date" id="date" name="date" class="form-control" required min="<?php echo date('Y-m-d'); ?>" value="<?php echo safeEcho($schedule['date']); ?>">
+                <input type="date" id="date" name="date" class="form-control" required min="<?php echo date('Y-m-d'); ?>" value="<?php echo safeEcho($schedule['date']); ?>" aria-label="Date">
             </div>
             <div class="mb-3">
                 <label for="time" class="form-label">Time</label>
-                <input type="time" id="time" name="time" class="form-control" required value="<?php echo safeEcho($schedule['time']); ?>">
+                <input type="time" id="time" name="time" class="form-control" required value="<?php echo safeEcho($schedule['time']); ?>" aria-label="Time">
             </div>
             <div class="mb-3">
                 <label class="form-label">Share with Friends</label>

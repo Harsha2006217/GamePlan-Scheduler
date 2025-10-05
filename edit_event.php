@@ -28,7 +28,6 @@ if (!$event) {
     exit;
 }
 
-$schedules = getSchedules($userId);
 $friends = getFriends($userId);
 $sharedWith = explode(', ', $event['shared_with'] ?? '');
 
@@ -39,9 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $time = $_POST['time'] ?? '';
     $description = $_POST['description'] ?? '';
     $reminder = $_POST['reminder'] ?? 'none';
-    $scheduleId = $_POST['schedule_id'] ?? '';
+    $externalLink = $_POST['external_link'] ?? '';
     $sharedFriends = $_POST['shared_friends'] ?? [];
-    $error = editEvent($userId, $id, $title, $date, $time, $description, $reminder, $scheduleId, $sharedFriends);
+    $error = editEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedFriends);
     if (!$error) {
         setMessage('success', 'Event updated successfully!');
         header("Location: index.php");
@@ -70,36 +69,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <form method="POST" onsubmit="return validateEventForm();">
             <div class="mb-3">
                 <label for="title" class="form-label">Title</label>
-                <input type="text" id="title" name="title" class="form-control" required maxlength="100" value="<?php echo safeEcho($event['title']); ?>">
+                <input type="text" id="title" name="title" class="form-control" required maxlength="100" value="<?php echo safeEcho($event['title']); ?>" aria-label="Title">
             </div>
             <div class="mb-3">
                 <label for="date" class="form-label">Date</label>
-                <input type="date" id="date" name="date" class="form-control" required min="<?php echo date('Y-m-d'); ?>" value="<?php echo safeEcho($event['date']); ?>">
+                <input type="date" id="date" name="date" class="form-control" required min="<?php echo date('Y-m-d'); ?>" value="<?php echo safeEcho($event['date']); ?>" aria-label="Date">
             </div>
             <div class="mb-3">
                 <label for="time" class="form-label">Time</label>
-                <input type="time" id="time" name="time" class="form-control" required value="<?php echo safeEcho($event['time']); ?>">
+                <input type="time" id="time" name="time" class="form-control" required value="<?php echo safeEcho($event['time']); ?>" aria-label="Time">
             </div>
             <div class="mb-3">
                 <label for="description" class="form-label">Description</label>
-                <textarea id="description" name="description" class="form-control" rows="3" maxlength="500"><?php echo safeEcho($event['description']); ?></textarea>
+                <textarea id="description" name="description" class="form-control" rows="3" maxlength="500" aria-label="Description"><?php echo safeEcho($event['description']); ?></textarea>
             </div>
             <div class="mb-3">
                 <label for="reminder" class="form-label">Reminder</label>
-                <select id="reminder" name="reminder" class="form-select">
+                <select id="reminder" name="reminder" class="form-select" aria-label="Reminder">
                     <option value="none" <?php if ($event['reminder'] == 'none') echo 'selected'; ?>>None</option>
                     <option value="1_hour" <?php if ($event['reminder'] == '1_hour') echo 'selected'; ?>>1 Hour Before</option>
                     <option value="1_day" <?php if ($event['reminder'] == '1_day') echo 'selected'; ?>>1 Day Before</option>
                 </select>
             </div>
             <div class="mb-3">
-                <label for="schedule_id" class="form-label">Link to Schedule (Optional)</label>
-                <select id="schedule_id" name="schedule_id" class="form-select">
-                    <option value="">None</option>
-                    <?php foreach ($schedules as $sch): ?>
-                        <option value="<?php echo $sch['schedule_id']; ?>" <?php if ($sch['schedule_id'] == $event['schedule_id']) echo 'selected'; ?>><?php echo safeEcho($sch['game_titel'] . ' on ' . $sch['date']); ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label for="external_link" class="form-label">External Link (Optional)</label>
+                <input type="url" id="external_link" name="external_link" class="form-control" value="<?php echo safeEcho($event['external_link']); ?>" aria-label="External Link">
             </div>
             <div class="mb-3">
                 <label class="form-label">Share with Friends</label>

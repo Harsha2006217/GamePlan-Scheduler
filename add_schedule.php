@@ -2,7 +2,7 @@
 // add_schedule.php - Add Schedule Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add new schedules with game, date, time, friends.
+// Description: Form to add new schedules with game title input, date, time, friends.
 
 require_once 'functions.php';
 
@@ -13,16 +13,15 @@ if (!isLoggedIn()) {
 }
 
 $userId = getUserId();
-$games = getGames();
 $friends = getFriends($userId);
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $gameId = $_POST['game_id'] ?? '';
+    $gameTitle = $_POST['game_title'] ?? '';
     $date = $_POST['date'] ?? '';
     $time = $_POST['time'] ?? '';
     $selectedFriends = $_POST['friends'] ?? [];
-    $error = addSchedule($userId, $gameId, $date, $time, $selectedFriends);
+    $error = addSchedule($userId, $gameTitle, $date, $time, $selectedFriends);
     if (!$error) {
         setMessage('success', 'Schedule added successfully!');
         header("Location: index.php");
@@ -50,21 +49,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <h2>Add Schedule</h2>
         <form method="POST" onsubmit="return validateScheduleForm();">
             <div class="mb-3">
-                <label for="game_id" class="form-label">Game</label>
-                <select id="game_id" name="game_id" class="form-select" required>
-                    <option value="">Select Game</option>
-                    <?php foreach ($games as $game): ?>
-                        <option value="<?php echo $game['game_id']; ?>"><?php echo safeEcho($game['titel']); ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label for="game_title" class="form-label">Game Title</label>
+                <input type="text" id="game_title" name="game_title" class="form-control" required maxlength="100" aria-label="Game Title">
             </div>
             <div class="mb-3">
                 <label for="date" class="form-label">Date</label>
-                <input type="date" id="date" name="date" class="form-control" required min="<?php echo date('Y-m-d'); ?>">
+                <input type="date" id="date" name="date" class="form-control" required min="<?php echo date('Y-m-d'); ?>" aria-label="Date">
             </div>
             <div class="mb-3">
                 <label for="time" class="form-label">Time</label>
-                <input type="time" id="time" name="time" class="form-control" required>
+                <input type="time" id="time" name="time" class="form-control" required aria-label="Time">
             </div>
             <div class="mb-3">
                 <label class="form-label">Share with Friends</label>

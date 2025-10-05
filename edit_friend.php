@@ -1,8 +1,8 @@
 <?php
-// add_friend.php - Add Friend Page
+// edit_friend.php - Edit Friend Note Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add friends by username with note.
+// Description: Form to edit friend note.
 
 require_once 'functions.php';
 
@@ -13,13 +13,27 @@ if (!isLoggedIn()) {
 }
 
 $userId = getUserId();
+$id = $_GET['id'] ?? 0;
+if (!is_numeric($id)) {
+    header("Location: index.php");
+    exit;
+}
+
+$friends = getFriends($userId);
+$friend = array_filter($friends, function($f) use ($id) { return $f['user_id'] == $id; });
+$friend = reset($friend);
+if (!$friend) {
+    setMessage('danger', 'Friend not found.');
+    header("Location: index.php");
+    exit;
+}
+
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $friendUsername = $_POST['friend_username'] ?? '';
     $note = $_POST['note'] ?? '';
-    $error = addFriend($userId, $friendUsername, $note);
+    $error = updateFriendNote($userId, $id, $note);
     if (!$error) {
-        setMessage('success', 'Friend added successfully!');
+        setMessage('success', 'Friend note updated!');
         header("Location: index.php");
         exit;
     }
@@ -31,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Friend - GamePlan Scheduler</title>
+    <title>Edit Friend Note - GamePlan Scheduler</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -42,17 +56,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php echo getMessage(); ?>
         <?php if ($error): ?><div class="alert alert-danger"><?php echo safeEcho($error); ?></div><?php endif; ?>
 
-        <h2>Add Friend</h2>
+        <h2>Edit Note for <?php echo safeEcho($friend['username']); ?></h2>
         <form method="POST">
             <div class="mb-3">
-                <label for="friend_username" class="form-label">Friend's Username</label>
-                <input type="text" id="friend_username" name="friend_username" class="form-control" required maxlength="50" aria-label="Friend's Username">
+                <label for="note" class="form-label">Note</label>
+                <textarea id="note" name="note" class="form-control" rows="2" aria-label="Note"><?php echo safeEcho($friend['note']); ?></textarea>
             </div>
-            <div class="mb-3">
-                <label for="note" class="form-label">Note (Optional)</label>
-                <textarea id="note" name="note" class="form-control" rows="2" aria-label="Note"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">Add Friend</button>
+            <button type="submit" class="btn btn-primary">Update Note</button>
         </form>
     </main>
 

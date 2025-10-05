@@ -41,15 +41,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <form method="POST" class="mt-4" onsubmit="return validateRegisterForm();">
             <div class="mb-3">
                 <label for="username" class="form-label">Username</label>
-                <input type="text" id="username" name="username" class="form-control" required maxlength="50">
+                <input type="text" id="username" name="username" class="form-control" required maxlength="50" aria-label="Username">
             </div>
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
-                <input type="email" id="email" name="email" class="form-control" required>
+                <input type="email" id="email" name="email" class="form-control" required aria-label="Email address">
             </div>
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
-                <input type="password" id="password" name="password" class="form-control" required minlength="8">
+                <input type="password" id="password" name="password" class="form-control" required minlength="8" aria-label="Password">
             </div>
             <button type="submit" class="btn btn-primary btn-lg w-100">Register</button>
         </form>

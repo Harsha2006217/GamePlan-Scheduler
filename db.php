@@ -36,10 +36,4 @@ function getDBConnection() {
 
     return $pdo;
 }
-
-// Test connection on file load (for development only, remove in production)
-if (basename(__FILE__) == basename($_SERVER["SCRIPT_FILENAME"])) {
-    getDBConnection();
-    echo "Database connection successful.";
-}
 ?>
