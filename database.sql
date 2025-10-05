@@ -1,9 +1,8 @@
 -- Advanced MySQL Schema for GamePlan Scheduler
 -- Created by Harsha Kanaparthi on 02-10-2025
--- This schema defines 7 tables with foreign keys, cascades for integrity, and indexes for performance.
--- It matches the ERD: Users 1:N Friends/UserGames/Schedules/Events, Schedules 1:1 Events (optional), Events N:M Users via EventUserMap.
--- Sample data included for testing (e.g., hashed passwords use 'test123' – change in production).
--- Run this in phpMyAdmin or MySQL workbench to set up the DB.
+-- Matches ERD: Users 1:N Friends/UserGames/Schedules/Events, Schedules 1:1 Events (optional), Events N:M Users via EventUserMap.
+-- Constraints, indexes for performance, cascades for integrity.
+-- Sample data with hashed passwords ('test123') for testing.
 
 CREATE DATABASE IF NOT EXISTS gameplan_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE gameplan_db;

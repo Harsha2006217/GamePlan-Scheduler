@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validateCSRF();
     $title = $_POST['title'] ?? '';
     $date = $_POST['date'] ?? '';
-    $time = $_POST['time'] ?? '';
+    $time = $_POST['time'] . ':00';
     $description = $_POST['description'] ?? '';
     $reminder = $_POST['reminder'] ?? '';
     $schedule_id = $_POST['schedule_id'] ?? '';

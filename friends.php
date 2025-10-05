@@ -2,7 +2,8 @@
 require_once 'functions.php';
 requireLogin();
 checkTimeout();
-$friends = getFriends(getUserId());
+$user_id = getUserId();
+$friends = getFriends($user_id);
 ?>
 
 <!DOCTYPE html>

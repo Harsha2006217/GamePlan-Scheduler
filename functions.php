@@ -3,10 +3,10 @@ require_once 'db.php';
 
 // Advanced function library for GamePlan Scheduler
 // Author: Harsha Kanaparthi
-// Features: Full CRUD for all entities, server/client validation, security checks (CSRF, hashing, prepared statements),
+// Features: Full CRUD for all entities, server/client validation, security (CSRF, hashing, prepared statements),
 // Session management with timeouts, reminder logic with JS alerts, calendar merging with usort for efficiency.
 
-session_start();  // Ensure session is started
+session_start();  // Start session
 
 // CSRF Protection
 if (!isset($_SESSION['csrf_token'])) {
@@ -99,7 +99,7 @@ function checkTimeout() {
         $stmt = $pdo->prepare("SELECT last_activity FROM Users WHERE user_id = :user_id");
         $stmt->execute(['user_id' => $_SESSION['user_id']]);
         $last = $stmt->fetchColumn();
-        if (time() - strtotime($last) > 1800) {
+        if (time() - strtotime($last) > 1800) {  // 30 min timeout
             logoutUser();
         }
     }
@@ -163,6 +163,27 @@ function addFriend($friend_username) {
     $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_user_id) VALUES (:user_id, :friend_id)");
     $stmt->execute(['user_id' => $user_id, 'friend_id' => $friend_id]);
     return true;
+}
+
+function editFriend($friend_id, $new_username) {
+    $user_id = getUserId();
+    $pdo = getPDO();
+    $new_username = trim($new_username);
+    if (empty($new_username)) {
+        return 'Username required.';
+    }
+    $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE username = :username AND user_id != :user_id");
+    $stmt->execute(['username' => $new_username, 'user_id' => $user_id]);
+    $new_friend_id = $stmt->fetchColumn();
+    if (!$new_friend_id) {
+        return 'User not found.';
+    }
+    $stmt = $pdo->prepare("UPDATE Friends SET friend_user_id = :new_friend_id WHERE friend_id = :friend_id AND user_id = :user_id");
+    $stmt->execute(['new_friend_id' => $new_friend_id, 'friend_id' => $friend_id, 'user_id' => $user_id]);
+    if ($stmt->rowCount() > 0) {
+        return true;
+    }
+    return 'Friend not found or no permission.';
 }
 
 function getFriends($user_id) {
