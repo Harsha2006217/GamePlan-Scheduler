@@ -1,29 +1,27 @@
 <?php
-// db.php: PDO connection singleton for security and efficiency
-// Configurable for production (use env vars in real apps)
-// Human-written: Clear try-catch, options for error handling
+// Database Connection for GamePlan Scheduler
+// Created by Harsha Kanaparthi on 02-10-2025
+// This file establishes a secure PDO connection with error handling.
+// Uses utf8mb4 for full Unicode support, and sets strict error mode.
+
+$host = 'localhost';
+$dbname = 'gameplan_db';
+$user = 'root';
+$pass = '';
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false); // For real prepared statements
+} catch (PDOException $e) {
+    // Log the error to a file instead of displaying (security best practice)
+    error_log("Connection failed: " . $e->getMessage(), 0);
+    die('Could not connect to the database. Please try again later.');
+}
 
 function getPDO() {
-    static $pdo = null;
-    if ($pdo === null) {
-        $host = 'localhost';  // Use '127.0.0.1' for stricter access
-        $dbname = 'gameplan_scheduler';
-        $user = 'root';       // Change to secure user in production
-        $pass = '';           // Change to secure password in production
-        $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
-        $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,          // Throw exceptions on errors
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,     // Return associative arrays
-            PDO::ATTR_EMULATE_PREPARES => false,                  // Use real prepared statements
-            PDO::ATTR_STRINGIFY_FETCHES => false,                 // Prevent string conversion
-        ];
-        try {
-            $pdo = new PDO($dsn, $user, $pass, $options);
-        } catch (PDOException $e) {
-            // Log error in production, show generic message
-            error_log('Database connection failed: ' . $e->getMessage());
-            die('Unable to connect to the database. Please try again later.');
-        }
-    }
+    global $pdo;
     return $pdo;
 }
+?>
