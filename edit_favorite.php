@@ -2,7 +2,7 @@
 // edit_favorite.php - Edit Favorite Game Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to edit game title and description.
+// Description: Form to edit game title, description, and note.
 
 require_once 'functions.php';
 
@@ -32,7 +32,8 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $title = $_POST['title'] ?? '';
     $description = $_POST['description'] ?? '';
-    $error = updateFavoriteGame($userId, $id, $title, $description);
+    $note = $_POST['note'] ?? '';
+    $error = updateFavoriteGame($userId, $id, $title, $description, $note);
     if (!$error) {
         setMessage('success', 'Favorite game updated!');
         header("Location: profile.php");
@@ -66,6 +67,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="mb-3">
                 <label for="description" class="form-label">Description</label>
                 <textarea id="description" name="description" class="form-control" rows="2" maxlength="500" aria-label="Game Description"><?php echo safeEcho($game['description']); ?></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="note" class="form-label">Note</label>
+                <textarea id="note" name="note" class="form-control" rows="2" aria-label="Note"><?php echo safeEcho($game['note']); ?></textarea>
             </div>
             <button type="submit" class="btn btn-primary">Update</button>
         </form>

@@ -142,7 +142,7 @@ function loginUser($email, $password) {
     if ($err = validateRequired($password, "Password")) return $err;
 
     // Fetch user
-    $stmt = $pdo->prepare("SELECT user_id, password_hash FROM Users WHERE email = :email AND deleted_at IS NULL");
+    $stmt = $pdo->prepare("SELECT user_id, username, password_hash FROM Users WHERE email = :email AND deleted_at IS NULL");
     $stmt->execute(['email' => $email]);
     $user = $stmt->fetch();
 
@@ -152,7 +152,7 @@ function loginUser($email, $password) {
 
     // Set session
     $_SESSION['user_id'] = $user['user_id'];
-    $_SESSION['username'] = $email; // Or fetch username
+    $_SESSION['username'] = $user['username'];
     session_regenerate_id(true);
     updateLastActivity($pdo, $user['user_id']);
     return null; // Success
@@ -173,7 +173,7 @@ function getOrCreateGameId($pdo, $title, $description = '') {
     if (empty($title)) return 0;
 
     // Check if exists
-    $stmt = $pdo->prepare("SELECT game_id FROM Games WHERE LOWER(titel) = LOWER(:title)");
+    $stmt = $pdo->prepare("SELECT game_id FROM Games WHERE LOWER(titel) = LOWER(:title) AND deleted_at IS NULL");
     $stmt->execute(['title' => $title]);
     $row = $stmt->fetch();
     if ($row) return $row['game_id'];
@@ -185,7 +185,7 @@ function getOrCreateGameId($pdo, $title, $description = '') {
 }
 
 // Add favorite game
-function addFavoriteGame($userId, $title, $description = '') {
+function addFavoriteGame($userId, $title, $description = '', $note = '') {
     $pdo = getDBConnection();
     
     if ($err = validateRequired($title, "Game title", 100)) return $err;
@@ -198,25 +198,29 @@ function addFavoriteGame($userId, $title, $description = '') {
     if ($stmt->fetchColumn() > 0) return "Game already in favorites.";
 
     // Insert
-    $stmt = $pdo->prepare("INSERT INTO UserGames (user_id, game_id) VALUES (:user_id, :game_id)");
-    $stmt->execute(['user_id' => $userId, 'game_id' => $gameId]);
+    $stmt = $pdo->prepare("INSERT INTO UserGames (user_id, game_id, note) VALUES (:user_id, :game_id, :note)");
+    $stmt->execute(['user_id' => $userId, 'game_id' => $gameId, 'note' => $note]);
     return null;
 }
 
 // Update favorite game
-function updateFavoriteGame($userId, $gameId, $title, $description) {
+function updateFavoriteGame($userId, $gameId, $title, $description, $note) {
     $pdo = getDBConnection();
     
     if ($err = validateRequired($title, "Game title", 100)) return $err;
 
-    // Check ownership (through UserGames)
+    // Check ownership
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM UserGames WHERE user_id = :user_id AND game_id = :game_id");
     $stmt->execute(['user_id' => $userId, 'game_id' => $gameId]);
     if ($stmt->fetchColumn() == 0) return "No permission to edit.";
 
     // Update Games
-    $stmt = $pdo->prepare("UPDATE Games SET titel = :titel, description = :description WHERE game_id = :game_id");
+    $stmt = $pdo->prepare("UPDATE Games SET titel = :titel, description = :description WHERE game_id = :game_id AND deleted_at IS NULL");
     $stmt->execute(['titel' => $title, 'description' => $description, 'game_id' => $gameId]);
+
+    // Update note in UserGames
+    $stmt = $pdo->prepare("UPDATE UserGames SET note = :note WHERE user_id = :user_id AND game_id = :game_id");
+    $stmt->execute(['note' => $note, 'user_id' => $userId, 'game_id' => $gameId]);
     return null;
 }
 
@@ -232,7 +236,7 @@ function deleteFavoriteGame($userId, $gameId) {
 // Get favorite games
 function getFavoriteGames($userId) {
     $pdo = getDBConnection();
-    $stmt = $pdo->prepare("SELECT g.game_id, g.titel, g.description FROM UserGames ug JOIN Games g ON ug.game_id = g.game_id WHERE ug.user_id = :user_id");
+    $stmt = $pdo->prepare("SELECT g.game_id, g.titel, g.description, ug.note FROM UserGames ug JOIN Games g ON ug.game_id = g.game_id WHERE ug.user_id = :user_id AND g.deleted_at IS NULL");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
@@ -255,11 +259,11 @@ function addFriend($userId, $friendUsername, $note = '') {
     if ($friendId == $userId) return "Cannot add yourself as friend.";
 
     // Check if already friends
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = :user_id AND friend_user_id = :friend_id");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = :user_id AND friend_user_id = :friend_id AND deleted_at IS NULL");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId]);
     if ($stmt->fetchColumn() > 0) return "Already friends.";
 
-    // Insert mutual with note (note only on one side for simplicity)
+    // Insert mutual
     $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_user_id, note) VALUES (:user_id, :friend_id, :note), (:friend_id, :user_id, '')");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId, 'note' => $note]);
     return null;
@@ -270,11 +274,11 @@ function updateFriendNote($userId, $friendId, $note) {
     $pdo = getDBConnection();
     
     // Check if friends
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = :user_id AND friend_user_id = :friend_id");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = :user_id AND friend_user_id = :friend_id AND deleted_at IS NULL");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId]);
     if ($stmt->fetchColumn() == 0) return "Not friends.";
 
-    $stmt = $pdo->prepare("UPDATE Friends SET note = :note WHERE user_id = :user_id AND friend_user_id = :friend_id");
+    $stmt = $pdo->prepare("UPDATE Friends SET note = :note WHERE user_id = :user_id AND friend_user_id = :friend_id AND deleted_at IS NULL");
     $stmt->execute(['note' => $note, 'user_id' => $userId, 'friend_id' => $friendId]);
     return null;
 }
@@ -283,7 +287,7 @@ function updateFriendNote($userId, $friendId, $note) {
 function deleteFriend($userId, $friendId) {
     $pdo = getDBConnection();
     
-    $stmt = $pdo->prepare("DELETE FROM Friends WHERE (user_id = :user_id AND friend_user_id = :friend_id) OR (user_id = :friend_id AND friend_user_id = :user_id)");
+    $stmt = $pdo->prepare("UPDATE Friends SET deleted_at = NOW() WHERE (user_id = :user_id AND friend_user_id = :friend_id) OR (user_id = :friend_id AND friend_user_id = :user_id)");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId]);
     return null;
 }
@@ -293,7 +297,7 @@ function getFriends($userId) {
     $pdo = getDBConnection();
     $stmt = $pdo->prepare("SELECT u.user_id, u.username, f.note, 
                            CASE WHEN u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 'Online' ELSE 'Offline' END AS status 
-                           FROM Friends f JOIN Users u ON f.friend_user_id = u.user_id WHERE f.user_id = :user_id AND u.deleted_at IS NULL");
+                           FROM Friends f JOIN Users u ON f.friend_user_id = u.user_id WHERE f.user_id = :user_id AND f.deleted_at IS NULL AND u.deleted_at IS NULL");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
@@ -467,7 +471,7 @@ function deleteEvent($userId, $eventId) {
 // Get all games
 function getGames() {
     $pdo = getDBConnection();
-    $stmt = $pdo->query("SELECT game_id, titel, description FROM Games ORDER BY titel");
+    $stmt = $pdo->query("SELECT game_id, titel, description FROM Games WHERE deleted_at IS NULL ORDER BY titel");
     return $stmt->fetchAll();
 }
 
@@ -493,4 +497,6 @@ function getCalendarItems($userId) {
 
     return $items;
 }
+
+// --- Reminder Handler (JS simulation in script.js) ---
 ?>

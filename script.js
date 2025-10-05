@@ -46,12 +46,16 @@ function validateRegisterForm() {
 
 // Schedule form validation
 function validateScheduleForm() {
-    const gameId = document.getElementById('game_id').value;
+    const gameTitle = document.getElementById('game_title').value.trim();
     const date = document.getElementById('date').value;
     const time = document.getElementById('time').value;
     
-    if (!gameId) {
-        alert('Select a game.');
+    if (!gameTitle || /^\s*$/.test(gameTitle)) {
+        alert('Game title is required and cannot be only spaces.');
+        return false;
+    }
+    if (gameTitle.length > 100) {
+        alert('Game title too long (max 100 characters).');
         return false;
     }
     if (!date || new Date(date) < new Date()) {
@@ -71,6 +75,7 @@ function validateEventForm() {
     const date = document.getElementById('date').value;
     const time = document.getElementById('time').value;
     const description = document.getElementById('description').value;
+    const externalLink = document.getElementById('external_link').value;
     
     if (!title || /^\s*$/.test(title)) {
         alert('Title is required and cannot be only spaces.');
@@ -92,13 +97,15 @@ function validateEventForm() {
         alert('Description too long (max 500 characters).');
         return false;
     }
+    if (externalLink && !/^(http|https):\/\/[^ "]+$/.test(externalLink)) {
+        alert('Invalid external link format.');
+        return false;
+    }
     return true;
 }
 
-// Reminder pop-ups (simulated, as real-time needs server push or polling)
+// Reminder pop-ups (simulated)
 document.addEventListener('DOMContentLoaded', function() {
-    // Fetch events via AJAX if needed, but for simplicity, assume server-side handles
     console.log('Checking for reminders...');
-    // Example: setTimeout for demo pop-up
-    // In production, use Notification API for push
+    // In production, use Notification API or polling for real reminders
 });

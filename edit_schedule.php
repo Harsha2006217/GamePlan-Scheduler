@@ -76,15 +76,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <label for="time" class="form-label">Time</label>
                 <input type="time" id="time" name="time" class="form-control" required value="<?php echo safeEcho($schedule['time']); ?>" aria-label="Time">
             </div>
-            <div class="mb-3">
-                <label class="form-label">Share with Friends</label>
-                <?php foreach ($friends as $friend): ?>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" name="friends[]" value="<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $selectedFriends)) echo 'checked'; ?>>
-                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
-                    </div>
-                <?php endforeach; ?>
-            </div>
             <button type="submit" class="btn btn-primary">Update Schedule</button>
         </form>
     </main>

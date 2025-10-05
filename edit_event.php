@@ -95,15 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <label for="external_link" class="form-label">External Link (Optional)</label>
                 <input type="url" id="external_link" name="external_link" class="form-control" value="<?php echo safeEcho($event['external_link']); ?>" aria-label="External Link">
             </div>
-            <div class="mb-3">
-                <label class="form-label">Share with Friends</label>
-                <?php foreach ($friends as $friend): ?>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" name="shared_friends[]" value="<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['username'], $sharedWith)) echo 'checked'; ?>>
-                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
-                    </div>
-                <?php endforeach; ?>
-            </div>
             <button type="submit" class="btn btn-primary">Update Event</button>
         </form>
     </main>
