@@ -42,16 +42,17 @@ $calendarItems = getCalendarItems($userId);
             <h2>Friends List</h2>
             <table class="table table-dark table-bordered">
                 <thead class="bg-info">
-                    <tr><th>Username</th><th>Status</th><th>Actions</th></tr>
+                    <tr><th>Username</th><th>Status</th><th>Note</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($friends as $friend): ?>
                         <tr>
                             <td><?php echo safeEcho($friend['username']); ?></td>
                             <td><?php echo $friend['status']; ?></td>
+                            <td><?php echo safeEcho($friend['note']); ?></td>
                             <td>
-                                <a href="edit_friend.php?id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
-                                <a href="delete.php?type=friend&id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                                <a href="edit_friend.php?id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-warning">Edit Note</a>
+                                <a href="delete.php?type=friend&id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Remove</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -63,13 +64,14 @@ $calendarItems = getCalendarItems($userId);
             <h2>Favorite Games</h2>
             <table class="table table-dark table-bordered">
                 <thead class="bg-info">
-                    <tr><th>Title</th><th>Description</th><th>Actions</th></tr>
+                    <tr><th>Title</th><th>Description</th><th>Note</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($favorites as $game): ?>
                         <tr>
                             <td><?php echo safeEcho($game['titel']); ?></td>
                             <td><?php echo safeEcho($game['description']); ?></td>
+                            <td><?php echo safeEcho($game['note']); ?></td>
                             <td>
                                 <a href="edit_favorite.php?id=<?php echo $game['game_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
                                 <a href="delete.php?type=favorite&id=<?php echo $game['game_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
@@ -89,10 +91,10 @@ $calendarItems = getCalendarItems($userId);
                 <tbody>
                     <?php foreach ($schedules as $schedule): ?>
                         <tr>
-                            <td><?php echo safeEcho($schedule['game']); ?></td>
+                            <td><?php echo safeEcho($schedule['game_titel']); ?></td>
                             <td><?php echo safeEcho($schedule['date']); ?></td>
                             <td><?php echo safeEcho($schedule['time']); ?></td>
-                            <td><?php echo safeEcho($schedule['shared_with']); ?></td>
+                            <td><?php echo safeEcho(getUsernamesFromIds(getDBConnection(), explode(',', $schedule['friends']))); ?></td>
                             <td>
                                 <a href="edit_schedule.php?id=<?php echo $schedule['schedule_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
                                 <a href="delete.php?type=schedule&id=<?php echo $schedule['schedule_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
@@ -107,7 +109,7 @@ $calendarItems = getCalendarItems($userId);
             <h2>Events</h2>
             <table class="table table-dark table-bordered">
                 <thead class="bg-info">
-                    <tr><th>Title</th><th>Date</th><th>Time</th><th>Description</th><th>Reminder</th><th>Link</th><th>Shared With</th><th>Actions</th></tr>
+                    <tr><th>Title</th><th>Date</th><th>Time</th><th>Description</th><th>Reminder</th><th>External Link</th><th>Shared With</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($events as $event): ?>
@@ -117,7 +119,7 @@ $calendarItems = getCalendarItems($userId);
                             <td><?php echo safeEcho($event['time']); ?></td>
                             <td><?php echo safeEcho($event['description']); ?></td>
                             <td><?php echo safeEcho($event['reminder']); ?></td>
-                            <td><?php echo safeEcho($event['link']); ?></td>
+                            <td><a href="<?php echo safeEcho($event['external_link']); ?>" target="_blank"><?php echo safeEcho($event['external_link']); ?></a></td>
                             <td><?php echo safeEcho($event['shared_with']); ?></td>
                             <td>
                                 <a href="edit_event.php?id=<?php echo $event['event_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
@@ -136,10 +138,10 @@ $calendarItems = getCalendarItems($userId);
                     <div class="col-md-4 mb-3">
                         <div class="card bg-secondary border-0 rounded-3">
                             <div class="card-body">
-                                <h5 class="card-title"><?php echo safeEcho($item['title'] ?? $item['game']); ?> - <?php echo safeEcho($item['date'] . ' at ' . $item['time']); ?></h5>
+                                <h5 class="card-title"><?php echo safeEcho($item['title'] ?? $item['game_titel']); ?> - <?php echo safeEcho($item['date'] . ' at ' . $item['time']); ?></h5>
                                 <?php if (isset($item['description'])): ?><p><?php echo safeEcho($item['description']); ?></p><?php endif; ?>
                                 <?php if (isset($item['reminder'])): ?><p>Reminder: <?php echo safeEcho($item['reminder']); ?></p><?php endif; ?>
-                                <?php if (isset($item['link'])): ?><p>Link: <a href="<?php echo safeEcho($item['link']); ?>">View</a></p><?php endif; ?>
+                                <?php if (isset($item['external_link'])): ?><p>Link: <a href="<?php echo safeEcho($item['external_link']); ?>" target="_blank">View</a></p><?php endif; ?>
                                 <?php if (isset($item['shared_with'])): ?><p>Shared with: <?php echo safeEcho($item['shared_with']); ?></p><?php endif; ?>
                             </div>
                         </div>

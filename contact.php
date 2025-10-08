@@ -2,7 +2,7 @@
 // contact.php - Contact Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Simple contact information page with form.
+// Description: Simple contact information page.
 
 require_once 'functions.php';
 
@@ -11,7 +11,7 @@ checkSessionTimeout();
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $message = $_POST['message'] ?? '';
-    // Simulate send, in real use mail()
+    // Simulate send
     setMessage('success', 'Message sent!');
     header("Location: contact.php");
     exit;
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <main class="container mt-5 pt-5">
         <?php echo getMessage(); ?>
         <h1>Contact Us</h1>
-        <p>For support or inquiries, email us at support@gameplanscheduler.com </p>
+        <p>For support or inquiries, email us at support@gameplanscheduler.com</p>
     </main>
     <?php include 'footer.php'; ?>
 </body>

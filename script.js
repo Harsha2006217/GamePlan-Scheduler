@@ -46,12 +46,16 @@ function validateRegisterForm() {
 
 // Schedule form validation
 function validateScheduleForm() {
-    const game = document.getElementById('game').value.trim();
+    const gameTitle = document.getElementById('game_title').value.trim();
     const date = document.getElementById('date').value;
     const time = document.getElementById('time').value;
     
-    if (!game) {
-        alert('Game is required.');
+    if (!gameTitle || /^\s*$/.test(gameTitle)) {
+        alert('Game title is required and cannot be only spaces.');
+        return false;
+    }
+    if (gameTitle.length > 100) {
+        alert('Game title too long (max 100 characters).');
         return false;
     }
     if (!date || new Date(date) < new Date()) {
@@ -71,7 +75,7 @@ function validateEventForm() {
     const date = document.getElementById('date').value;
     const time = document.getElementById('time').value;
     const description = document.getElementById('description').value;
-    const link = document.getElementById('link').value;
+    const externalLink = document.getElementById('external_link').value;
     
     if (!title || /^\s*$/.test(title)) {
         alert('Title is required and cannot be only spaces.');
@@ -93,8 +97,8 @@ function validateEventForm() {
         alert('Description too long (max 500 characters).');
         return false;
     }
-    if (link && !/^https?:\/\/.*/.test(link)) {
-        alert('Invalid URL format.');
+    if (externalLink && !/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(externalLink)) {
+        alert('Invalid external link format.');
         return false;
     }
     return true;

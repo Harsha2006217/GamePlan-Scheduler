@@ -1,19 +1,12 @@
 <?php
-// footer.php - Common Footer Component
+// footer.php - Common Footer
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Fixed footer with copyright info and links.
-// Ensures consistent layout across pages.
-
-if (!defined('IN_FOOTER')) {
-    define('IN_FOOTER', true);
-}
+// Description: Fixed footer with copyright and links to privacy and contact.
 
 ?>
-<footer class="fixed-bottom bg-secondary p-3 text-center shadow-top">
-    <div class="container">
-        <p class="mb-0">&copy; 2025 GamePlan Scheduler by Harsha Kanaparthi. All rights reserved.</p>
-        <a href="privacy.php" class="text-white mx-2">Privacy Policy</a> |
-        <a href="contact.php" class="text-white mx-2">Contact</a>
-    </div>
+<footer class="bg-secondary p-3 text-center fixed-bottom">
+    © 2025 GamePlan Scheduler by Harsha Kanaparthi | 
+    <a href="privacy.php" class="text-light">Privacy Policy</a> | 
+    <a href="contact.php" class="text-light">Contact</a>
 </footer>

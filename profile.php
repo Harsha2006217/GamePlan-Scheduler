@@ -2,7 +2,7 @@
 // profile.php - Profile Management Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Allows adding, editing, deleting favorite games and viewing profile.
+// Description: Allows adding, editing, deleting favorite games with note, and viewing profile.
 
 require_once 'functions.php';
 
@@ -16,10 +16,11 @@ $userId = getUserId();
 $favorites = getFavoriteGames($userId);
 
 $error = '';
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_favorite'])) {
     $title = $_POST['title'] ?? '';
     $description = $_POST['description'] ?? '';
-    $error = addFavoriteGame($userId, $title, $description);
+    $note = $_POST['note'] ?? '';
+    $error = addFavoriteGame($userId, $title, $description, $note);
     if (!$error) {
         setMessage('success', 'Favorite game added!');
         header("Location: profile.php");
@@ -47,26 +48,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <h2>Add Favorite Game</h2>
         <form method="POST">
             <div class="mb-3">
-                <label for="title" class="form-label">Title</label>
-                <input type="text" id="title" name="title" class="form-control" required maxlength="100">
+                <label for="title" class="form-label">Game Title</label>
+                <input type="text" id="title" name="title" class="form-control" required maxlength="100" aria-label="Game Title">
             </div>
             <div class="mb-3">
-                <label for="description" class="form-label">Description</label>
-                <textarea id="description" name="description" class="form-control" rows="3"></textarea>
+                <label for="description" class="form-label">Description (Optional)</label>
+                <textarea id="description" name="description" class="form-control" rows="2" maxlength="500" aria-label="Game Description"></textarea>
             </div>
-            <button type="submit" class="btn btn-primary">Add</button>
+            <div class="mb-3">
+                <label for="note" class="form-label">Note (Optional)</label>
+                <textarea id="note" name="note" class="form-control" rows="2" aria-label="Note"></textarea>
+            </div>
+            <button type="submit" name="add_favorite" class="btn btn-primary">Add</button>
         </form>
 
         <h2 class="mt-4">Your Favorites</h2>
         <table class="table table-dark table-bordered">
             <thead class="bg-info">
-                <tr><th>Title</th><th>Description</th><th>Actions</th></tr>
+                <tr><th>Title</th><th>Description</th><th>Note</th><th>Actions</th></tr>
             </thead>
             <tbody>
                 <?php foreach ($favorites as $game): ?>
                     <tr>
                         <td><?php echo safeEcho($game['titel']); ?></td>
                         <td><?php echo safeEcho($game['description']); ?></td>
+                        <td><?php echo safeEcho($game['note']); ?></td>
                         <td>
                             <a href="edit_favorite.php?id=<?php echo $game['game_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
                             <a href="delete.php?type=favorite&id=<?php echo $game['game_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
