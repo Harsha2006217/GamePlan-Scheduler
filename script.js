@@ -46,16 +46,12 @@ function validateRegisterForm() {
 
 // Schedule form validation
 function validateScheduleForm() {
-    const gameTitle = document.getElementById('game_title').value.trim();
+    const game = document.getElementById('game').value.trim();
     const date = document.getElementById('date').value;
     const time = document.getElementById('time').value;
     
-    if (!gameTitle || /^\s*$/.test(gameTitle)) {
-        alert('Game title is required and cannot be only spaces.');
-        return false;
-    }
-    if (gameTitle.length > 100) {
-        alert('Game title too long (max 100 characters).');
+    if (!game) {
+        alert('Game is required.');
         return false;
     }
     if (!date || new Date(date) < new Date()) {
@@ -75,7 +71,7 @@ function validateEventForm() {
     const date = document.getElementById('date').value;
     const time = document.getElementById('time').value;
     const description = document.getElementById('description').value;
-    const externalLink = document.getElementById('external_link').value;
+    const link = document.getElementById('link').value;
     
     if (!title || /^\s*$/.test(title)) {
         alert('Title is required and cannot be only spaces.');
@@ -97,8 +93,8 @@ function validateEventForm() {
         alert('Description too long (max 500 characters).');
         return false;
     }
-    if (externalLink && !/^(http|https):\/\/[^ "]+$/.test(externalLink)) {
-        alert('Invalid external link format.');
+    if (link && !/^https?:\/\/.*/.test(link)) {
+        alert('Invalid URL format.');
         return false;
     }
     return true;
@@ -107,5 +103,4 @@ function validateEventForm() {
 // Reminder pop-ups (simulated)
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Checking for reminders...');
-    // In production, use Notification API or polling for real reminders
 });

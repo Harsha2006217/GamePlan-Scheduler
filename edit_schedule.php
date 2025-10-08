@@ -28,16 +28,13 @@ if (!$schedule) {
     exit;
 }
 
-$friends = getFriends($userId);
-$selectedFriends = explode(',', $schedule['friends']);
-
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $gameTitle = $_POST['game_title'] ?? '';
+    $game = $_POST['game'] ?? '';
     $date = $_POST['date'] ?? '';
     $time = $_POST['time'] ?? '';
-    $selectedFriendsPost = $_POST['friends'] ?? [];
-    $error = editSchedule($userId, $id, $gameTitle, $date, $time, $selectedFriendsPost);
+    $sharedWith = $_POST['shared_with'] ?? '';
+    $error = editSchedule($userId, $id, $game, $date, $time, $sharedWith);
     if (!$error) {
         setMessage('success', 'Schedule updated successfully!');
         header("Location: index.php");
@@ -65,16 +62,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <h2>Edit Schedule</h2>
         <form method="POST" onsubmit="return validateScheduleForm();">
             <div class="mb-3">
-                <label for="game_title" class="form-label">Game Title</label>
-                <input type="text" id="game_title" name="game_title" class="form-control" required maxlength="100" value="<?php echo safeEcho($schedule['game_titel']); ?>" aria-label="Game Title">
+                <label for="game" class="form-label">Game</label>
+                <input type="text" id="game" name="game" class="form-control" required maxlength="100" value="<?php echo safeEcho($schedule['game']); ?>">
             </div>
             <div class="mb-3">
                 <label for="date" class="form-label">Date</label>
-                <input type="date" id="date" name="date" class="form-control" required min="<?php echo date('Y-m-d'); ?>" value="<?php echo safeEcho($schedule['date']); ?>" aria-label="Date">
+                <input type="date" id="date" name="date" class="form-control" required min="<?php echo date('Y-m-d'); ?>" value="<?php echo safeEcho($schedule['date']); ?>">
             </div>
             <div class="mb-3">
                 <label for="time" class="form-label">Time</label>
-                <input type="time" id="time" name="time" class="form-control" required value="<?php echo safeEcho($schedule['time']); ?>" aria-label="Time">
+                <input type="time" id="time" name="time" class="form-control" required value="<?php echo safeEcho($schedule['time']); ?>">
+            </div>
+            <div class="mb-3">
+                <label for="shared_with" class="form-label">Shared With (comma-separated usernames)</label>
+                <input type="text" id="shared_with" name="shared_with" class="form-control" value="<?php echo safeEcho($schedule['shared_with']); ?>">
             </div>
             <button type="submit" class="btn btn-primary">Update Schedule</button>
         </form>

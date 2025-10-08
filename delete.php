@@ -2,7 +2,7 @@
 // delete.php - Delete Handler
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Handles soft deletion of items.
+// Description: Handles deletion of schedules or events with confirmation.
 
 require_once 'functions.php';
 
@@ -35,6 +35,6 @@ if ($error) {
     setMessage('success', ucfirst($type) . ' deleted successfully!');
 }
 
-header("Location: " . ($type == 'favorite' ? 'profile.php' : 'index.php'));
+header("Location: index.php");
 exit;
 ?>

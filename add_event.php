@@ -2,7 +2,7 @@
 // add_event.php - Add Event Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add new events with external link input and sharing.
+// Description: Form to add new events with link input, shared with text.
 
 require_once 'functions.php';
 
@@ -13,7 +13,6 @@ if (!isLoggedIn()) {
 }
 
 $userId = getUserId();
-$friends = getFriends($userId);
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -22,9 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $time = $_POST['time'] ?? '';
     $description = $_POST['description'] ?? '';
     $reminder = $_POST['reminder'] ?? 'none';
-    $externalLink = $_POST['external_link'] ?? '';
-    $sharedFriends = $_POST['shared_friends'] ?? [];
-    $error = addEvent($userId, $title, $date, $time, $description, $reminder, $externalLink, $sharedFriends);
+    $link = $_POST['link'] ?? '';
+    $sharedWith = $_POST['shared_with'] ?? '';
+    $error = addEvent($userId, $title, $date, $time, $description, $reminder, $link, $sharedWith);
     if (!$error) {
         setMessage('success', 'Event added successfully!');
         header("Location: index.php");
@@ -53,31 +52,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <form method="POST" onsubmit="return validateEventForm();">
             <div class="mb-3">
                 <label for="title" class="form-label">Title</label>
-                <input type="text" id="title" name="title" class="form-control" required maxlength="100" aria-label="Title">
+                <input type="text" id="title" name="title" class="form-control" required maxlength="100">
             </div>
             <div class="mb-3">
                 <label for="date" class="form-label">Date</label>
-                <input type="date" id="date" name="date" class="form-control" required min="<?php echo date('Y-m-d'); ?>" aria-label="Date">
+                <input type="date" id="date" name="date" class="form-control" required min="<?php echo date('Y-m-d'); ?>">
             </div>
             <div class="mb-3">
                 <label for="time" class="form-label">Time</label>
-                <input type="time" id="time" name="time" class="form-control" required aria-label="Time">
+                <input type="time" id="time" name="time" class="form-control" required>
             </div>
             <div class="mb-3">
                 <label for="description" class="form-label">Description</label>
-                <textarea id="description" name="description" class="form-control" rows="3" maxlength="500" aria-label="Description"></textarea>
+                <textarea id="description" name="description" class="form-control" rows="3" maxlength="500"></textarea>
             </div>
             <div class="mb-3">
                 <label for="reminder" class="form-label">Reminder</label>
-                <select id="reminder" name="reminder" class="form-select" aria-label="Reminder">
+                <select id="reminder" name="reminder" class="form-select">
                     <option value="none">None</option>
                     <option value="1_hour">1 Hour Before</option>
                     <option value="1_day">1 Day Before</option>
                 </select>
             </div>
             <div class="mb-3">
-                <label for="external_link" class="form-label">External Link (Optional)</label>
-                <input type="url" id="external_link" name="external_link" class="form-control" aria-label="External Link">
+                <label for="link" class="form-label">Link to Schedule (Optional)</label>
+                <input type="url" id="link" name="link" class="form-control">
+            </div>
+            <div class="mb-3">
+                <label for="shared_with" class="form-label">Shared With (comma-separated usernames)</label>
+                <input type="text" id="shared_with" name="shared_with" class="form-control">
             </div>
             <button type="submit" class="btn btn-primary">Add Event</button>
         </form>

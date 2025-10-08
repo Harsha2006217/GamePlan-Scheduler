@@ -2,7 +2,7 @@
 // add_friend.php - Add Friend Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add friends by username with note.
+// Description: Form to add friends by username.
 
 require_once 'functions.php';
 
@@ -13,14 +13,15 @@ if (!isLoggedIn()) {
 }
 
 $userId = getUserId();
+$friends = getFriends($userId);
+
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $friendUsername = $_POST['friend_username'] ?? '';
-    $note = $_POST['note'] ?? '';
-    $error = addFriend($userId, $friendUsername, $note);
+    $error = addFriend($userId, $friendUsername);
     if (!$error) {
         setMessage('success', 'Friend added successfully!');
-        header("Location: index.php");
+        header("Location: add_friend.php");
         exit;
     }
 }
@@ -46,14 +47,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <form method="POST">
             <div class="mb-3">
                 <label for="friend_username" class="form-label">Friend's Username</label>
-                <input type="text" id="friend_username" name="friend_username" class="form-control" required maxlength="50" aria-label="Friend's Username">
-            </div>
-            <div class="mb-3">
-                <label for="note" class="form-label">Note (Optional)</label>
-                <textarea id="note" name="note" class="form-control" rows="2" aria-label="Note"></textarea>
+                <input type="text" id="friend_username" name="friend_username" class="form-control" required maxlength="50">
             </div>
             <button type="submit" class="btn btn-primary">Add Friend</button>
         </form>
+
+        <h2 class="mt-4">My Friends</h2>
+        <table class="table table-dark table-bordered">
+            <thead class="bg-info">
+                <tr><th>Username</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                <?php foreach ($friends as $friend): ?>
+                    <tr>
+                        <td><?php echo safeEcho($friend['username']); ?></td>
+                        <td><?php echo $friend['status']; ?></td>
+                        <td>
+                            <a href="edit_friend.php?id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
+                            <a href="delete.php?type=friend&id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </main>
 
     <?php include 'footer.php'; ?>
