@@ -2,7 +2,7 @@
 // add_event.php - Add Event Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add new events with external link input and shared with usernames.
+// Description: Form to add new events with external link input and shared with str.
 require_once 'functions.php';
 checkSessionTimeout();
 if (!isLoggedIn()) {

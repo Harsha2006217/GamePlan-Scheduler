@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <main class="container mt-5 pt-5">
         <?php echo getMessage(); ?>
         <h1>Contact Us</h1>
-        <p>For support or inquiries, email us at harsha.kanaparthi20062@gmail.com</p>
+        <p>For support or inquiries, email us at harsha.kanaparthi20062@gmail.com.</p>
     </main>
     <?php include 'footer.php'; ?>
 </body>
