@@ -115,8 +115,7 @@
 ## 🎥 Demo & Repo
 
 - **Video**: 6 minuten walkthrough  
-- **GitHub**: [link naar repo]  
-  - Commits: `setup abc123`, `auth ghi789`, etc.
+- **GitHub**: https://github.com/Harsha2006217/GamePlan-Scheduler
 
 ---
 
@@ -129,4 +128,4 @@
 
 ## 📬 Contact
 
-Voor vragen of problemen: [support@gameplanscheduler.com](mailto:support@gameplanscheduler.com)
+Voor vragen of problemen: [harsha.kanaparthi20062@gmail.com](mailto:harsha.kanaparthi20062@gmail.com)
