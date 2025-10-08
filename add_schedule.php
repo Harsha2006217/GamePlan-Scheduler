@@ -2,7 +2,7 @@
 // add_schedule.php - Add Schedule Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add new schedules with game title input, date, time, friends, shared with.
+// Description: Form to add new schedules with game title input, date, time, friends str, shared with str.
 
 require_once 'functions.php';
 
@@ -13,16 +13,15 @@ if (!isLoggedIn()) {
 }
 
 $userId = getUserId();
-$friends = getFriends($userId);
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $gameTitle = $_POST['game_title'] ?? '';
     $date = $_POST['date'] ?? '';
     $time = $_POST['time'] ?? '';
-    $selectedFriends = $_POST['friends'] ?? [];
-    $sharedWith = $_POST['shared_with'] ?? [];
-    $error = addSchedule($userId, $gameTitle, $date, $time, $selectedFriends, $sharedWith);
+    $friendsStr = $_POST['friends_str'] ?? '';
+    $sharedWithStr = $_POST['shared_with_str'] ?? '';
+    $error = addSchedule($userId, $gameTitle, $date, $time, $friendsStr, $sharedWithStr);
     if (!$error) {
         setMessage('success', 'Schedule added successfully!');
         header("Location: index.php");
@@ -62,22 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="time" id="time" name="time" class="form-control" required aria-label="Time">
             </div>
             <div class="mb-3">
-                <label class="form-label">Friends</label>
-                <?php foreach ($friends as $friend): ?>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" name="friends[]" value="<?php echo $friend['user_id']; ?>">
-                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
-                    </div>
-                <?php endforeach; ?>
+                <label for="friends_str" class="form-label">Friends (comma-separated usernames)</label>
+                <input type="text" id="friends_str" name="friends_str" class="form-control" aria-label="Friends">
             </div>
             <div class="mb-3">
-                <label class="form-label">Shared With</label>
-                <?php foreach ($friends as $friend): ?>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" name="shared_with[]" value="<?php echo $friend['user_id']; ?>">
-                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
-                    </div>
-                <?php endforeach; ?>
+                <label for="shared_with_str" class="form-label">Shared With (comma-separated usernames)</label>
+                <input type="text" id="shared_with_str" name="shared_with_str" class="form-control" aria-label="Shared With">
             </div>
             <button type="submit" class="btn btn-primary">Add Schedule</button>
         </form>

@@ -28,18 +28,14 @@ if (!$schedule) {
     exit;
 }
 
-$friends = getFriends($userId);
-$selectedFriends = explode(',', $schedule['friends']);
-$selectedSharedWith = explode(',', $schedule['shared_with']);
-
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $gameTitle = $_POST['game_title'] ?? '';
     $date = $_POST['date'] ?? '';
     $time = $_POST['time'] ?? '';
-    $selectedFriendsPost = $_POST['friends'] ?? [];
-    $selectedSharedWithPost = $_POST['shared_with'] ?? [];
-    $error = editSchedule($userId, $id, $gameTitle, $date, $time, $selectedFriendsPost, $selectedSharedWithPost);
+    $friendsStr = $_POST['friends_str'] ?? '';
+    $sharedWithStr = $_POST['shared_with_str'] ?? '';
+    $error = editSchedule($userId, $id, $gameTitle, $date, $time, $friendsStr, $sharedWithStr);
     if (!$error) {
         setMessage('success', 'Schedule updated successfully!');
         header("Location: index.php");
@@ -79,22 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="time" id="time" name="time" class="form-control" required value="<?php echo safeEcho($schedule['time']); ?>" aria-label="Time">
             </div>
             <div class="mb-3">
-                <label class="form-label">Friends</label>
-                <?php foreach ($friends as $friend): ?>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" name="friends[]" value="<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $selectedFriends)) echo 'checked'; ?>>
-                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
-                    </div>
-                <?php endforeach; ?>
+                <label for="friends_str" class="form-label">Friends (comma-separated usernames)</label>
+                <input type="text" id="friends_str" name="friends_str" class="form-control" value="<?php echo safeEcho($schedule['friends']); ?>" aria-label="Friends">
             </div>
             <div class="mb-3">
-                <label class="form-label">Shared With</label>
-                <?php foreach ($friends as $friend): ?>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" name="shared_with[]" value="<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $selectedSharedWith)) echo 'checked'; ?>>
-                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
-                    </div>
-                <?php endforeach; ?>
+                <label for="shared_with_str" class="form-label">Shared With (comma-separated usernames)</label>
+                <input type="text" id="shared_with_str" name="shared_with_str" class="form-control" value="<?php echo safeEcho($schedule['shared_with']); ?>" aria-label="Shared With">
             </div>
             <button type="submit" class="btn btn-primary">Update Schedule</button>
         </form>

@@ -49,6 +49,8 @@ function validateScheduleForm() {
     const gameTitle = document.getElementById('game_title').value.trim();
     const date = document.getElementById('date').value;
     const time = document.getElementById('time').value;
+    const friendsStr = document.getElementById('friends_str').value.trim();
+    const sharedWithStr = document.getElementById('shared_with_str').value.trim();
     
     if (!gameTitle || /^\s*$/.test(gameTitle)) {
         alert('Game title is required and cannot be only spaces.');
@@ -62,6 +64,14 @@ function validateScheduleForm() {
         alert('Invalid time format.');
         return false;
     }
+    if (friendsStr && !/^[a-zA-Z0-9,\s]*$/.test(friendsStr)) {
+        alert('Invalid friends format.');
+        return false;
+    }
+    if (sharedWithStr && !/^[a-zA-Z0-9,\s]*$/.test(sharedWithStr)) {
+        alert('Invalid shared with format.');
+        return false;
+    }
     return true;
 }
 
@@ -72,6 +82,7 @@ function validateEventForm() {
     const time = document.getElementById('time').value;
     const description = document.getElementById('description').value;
     const externalLink = document.getElementById('external_link').value;
+    const sharedWithStr = document.getElementById('shared_with_str').value.trim();
     
     if (!title || /^\s*$/.test(title)) {
         alert('Title is required and cannot be only spaces.');
@@ -95,6 +106,10 @@ function validateEventForm() {
     }
     if (externalLink && !/^(https?:\/\/)?[\w\-]+(\.[\w\-]+)+[/#?]?.*$/.test(externalLink)) {
         alert('Invalid external link format.');
+        return false;
+    }
+    if (sharedWithStr && !/^[a-zA-Z0-9,\s]*$/.test(sharedWithStr)) {
+        alert('Invalid shared with format.');
         return false;
     }
     return true;

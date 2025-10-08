@@ -28,9 +28,6 @@ if (!$event) {
     exit;
 }
 
-$friends = getFriends($userId);
-$selectedSharedWith = explode(',', $event['shared_with'] ?? '');
-
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $title = $_POST['title'] ?? '';
@@ -39,8 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $description = $_POST['description'] ?? '';
     $reminder = $_POST['reminder'] ?? 'none';
     $externalLink = $_POST['external_link'] ?? '';
-    $sharedWith = $_POST['shared_with'] ?? [];
-    $error = editEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedWith);
+    $sharedWithStr = $_POST['shared_with_str'] ?? '';
+    $error = editEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedWithStr);
     if (!$error) {
         setMessage('success', 'Event updated successfully!');
         header("Location: index.php");
@@ -96,13 +93,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="url" id="external_link" name="external_link" class="form-control" value="<?php echo safeEcho($event['external_link']); ?>" aria-label="External Link">
             </div>
             <div class="mb-3">
-                <label class="form-label">Shared With</label>
-                <?php foreach ($friends as $friend): ?>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" name="shared_with[]" value="<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $selectedSharedWith)) echo 'checked'; ?>>
-                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
-                    </div>
-                <?php endforeach; ?>
+                <label for="shared_with_str" class="form-label">Shared With (comma-separated usernames)</label>
+                <input type="text" id="shared_with_str" name="shared_with_str" class="form-control" value="<?php echo safeEcho($event['shared_with']); ?>" aria-label="Shared With">
             </div>
             <button type="submit" class="btn btn-primary">Update Event</button>
         </form>

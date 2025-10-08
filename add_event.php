@@ -2,7 +2,7 @@
 // add_event.php - Add Event Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add new events with external link input and shared with.
+// Description: Form to add new events with external link input and shared with str.
 
 require_once 'functions.php';
 
@@ -13,7 +13,6 @@ if (!isLoggedIn()) {
 }
 
 $userId = getUserId();
-$friends = getFriends($userId);
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -23,8 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $description = $_POST['description'] ?? '';
     $reminder = $_POST['reminder'] ?? 'none';
     $externalLink = $_POST['external_link'] ?? '';
-    $sharedWith = $_POST['shared_with'] ?? [];
-    $error = addEvent($userId, $title, $date, $time, $description, $reminder, $externalLink, $sharedWith);
+    $sharedWithStr = $_POST['shared_with_str'] ?? '';
+    $error = addEvent($userId, $title, $date, $time, $description, $reminder, $externalLink, $sharedWithStr);
     if (!$error) {
         setMessage('success', 'Event added successfully!');
         header("Location: index.php");
@@ -80,13 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="url" id="external_link" name="external_link" class="form-control" aria-label="External Link">
             </div>
             <div class="mb-3">
-                <label class="form-label">Shared With</label>
-                <?php foreach ($friends as $friend): ?>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" name="shared_with[]" value="<?php echo $friend['user_id']; ?>">
-                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
-                    </div>
-                <?php endforeach; ?>
+                <label for="shared_with_str" class="form-label">Shared With (comma-separated usernames)</label>
+                <input type="text" id="shared_with_str" name="shared_with_str" class="form-control" aria-label="Shared With">
             </div>
             <button type="submit" class="btn btn-primary">Add Event</button>
         </form>

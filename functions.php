@@ -69,6 +69,17 @@ function validateUrl($url) {
     return null;
 }
 
+// Validate comma-separated IDs or usernames
+function validateCommaSeparated($value, $fieldName) {
+    if (empty($value)) return null;
+    $items = explode(',', $value);
+    foreach ($items as $item) {
+        $item = trim($item);
+        if (empty($item)) return "$fieldName contains empty items.";
+    }
+    return null;
+}
+
 // Set session message
 function setMessage($type, $msg) {
     $_SESSION['message'] = ['type' => $type, 'msg' => $msg];
@@ -251,19 +262,29 @@ function getFavoriteGames($userId) {
 
 // --- Friends Management ---
 
+// Get or create friend ID by username
+function getOrCreateFriendId($pdo, $username) {
+    $username = trim($username);
+    if (empty($username)) return 0;
+
+    // Check if exists
+    $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE LOWER(username) = LOWER(:username) AND deleted_at IS NULL");
+    $stmt->execute(['username' => $username]);
+    $row = $stmt->fetch();
+    if ($row) return $row['user_id'];
+
+    // If not, perhaps error or auto-create, but for now, assume exists
+    return 0;
+}
+
 // Add friend
 function addFriend($userId, $friendUsername, $note = '') {
     $pdo = getDBConnection();
     
     if ($err = validateRequired($friendUsername, "Friend username", 50)) return $err;
 
-    // Get friend ID
-    $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE username = :username AND deleted_at IS NULL");
-    $stmt->execute(['username' => $friendUsername]);
-    $friend = $stmt->fetch();
-    if (!$friend) return "User not found.";
-    
-    $friendId = $friend['user_id'];
+    $friendId = getOrCreateFriendId($pdo, $friendUsername);
+    if ($friendId == 0) return "User not found.";
     if ($friendId == $userId) return "Cannot add yourself as friend.";
 
     // Check if already friends
@@ -271,7 +292,7 @@ function addFriend($userId, $friendUsername, $note = '') {
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId]);
     if ($stmt->fetchColumn() > 0) return "Already friends.";
 
-    // Insert mutual with note (note only on one side)
+    // Insert mutual with note
     $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_user_id, note) VALUES (:user_id, :friend_id, :note), (:friend_id, :user_id, '')");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId, 'note' => $note]);
     return null;
@@ -313,19 +334,17 @@ function getFriends($userId) {
 // --- Schedules Management ---
 
 // Add schedule
-function addSchedule($userId, $gameTitle, $date, $time, $friends = [], $sharedWith = []) {
+function addSchedule($userId, $gameTitle, $date, $time, $friendsStr = '', $sharedWithStr = '') {
     $pdo = getDBConnection();
     
     // Validate
     if ($err = validateRequired($gameTitle, "Game title", 100)) return $err;
     if ($err = validateDate($date)) return $err;
     if ($err = validateTime($time)) return $err;
+    if ($err = validateCommaSeparated($friendsStr, "Friends")) return $err;
+    if ($err = validateCommaSeparated($sharedWithStr, "Shared With")) return $err;
 
     $gameId = getOrCreateGameId($pdo, $gameTitle);
-
-    // Prepare friends and shared_with as comma-separated strings
-    $friendsStr = implode(',', $friends);
-    $sharedWithStr = implode(',', $sharedWith);
 
     // Insert
     $stmt = $pdo->prepare("INSERT INTO Schedules (user_id, game_id, date, time, friends, shared_with) VALUES (:user_id, :game_id, :date, :time, :friends, :shared_with)");
@@ -344,7 +363,7 @@ function getSchedules($userId, $sort = 'date ASC') {
 }
 
 // Edit schedule
-function editSchedule($userId, $scheduleId, $gameTitle, $date, $time, $friends = [], $sharedWith = []) {
+function editSchedule($userId, $scheduleId, $gameTitle, $date, $time, $friendsStr = '', $sharedWithStr = '') {
     $pdo = getDBConnection();
     
     // Check ownership
@@ -354,11 +373,10 @@ function editSchedule($userId, $scheduleId, $gameTitle, $date, $time, $friends =
     if ($err = validateRequired($gameTitle, "Game title", 100)) return $err;
     if ($err = validateDate($date)) return $err;
     if ($err = validateTime($time)) return $err;
+    if ($err = validateCommaSeparated($friendsStr, "Friends")) return $err;
+    if ($err = validateCommaSeparated($sharedWithStr, "Shared With")) return $err;
 
     $gameId = getOrCreateGameId($pdo, $gameTitle);
-
-    $friendsStr = implode(',', $friends);
-    $sharedWithStr = implode(',', $sharedWith);
 
     // Update
     $stmt = $pdo->prepare("UPDATE Schedules SET game_id = :game_id, date = :date, time = :time, friends = :friends, shared_with = :shared_with WHERE schedule_id = :id AND user_id = :user_id AND deleted_at IS NULL");
@@ -380,7 +398,7 @@ function deleteSchedule($userId, $scheduleId) {
 // --- Events Management ---
 
 // Add event
-function addEvent($userId, $title, $date, $time, $description, $reminder, $externalLink = '', $sharedWith = []) {
+function addEvent($userId, $title, $date, $time, $description, $reminder, $externalLink = '', $sharedWithStr = '') {
     $pdo = getDBConnection();
     
     // Validate
@@ -390,9 +408,7 @@ function addEvent($userId, $title, $date, $time, $description, $reminder, $exter
     if (!empty($description) && strlen($description) > 500) return "Description too long (max 500 characters).";
     if (!in_array($reminder, ['none', '1_hour', '1_day'])) return "Invalid reminder option.";
     if ($err = validateUrl($externalLink)) return $err;
-
-    // Prepare shared_with as comma-separated string
-    $sharedWithStr = implode(',', $sharedWith);
+    if ($err = validateCommaSeparated($sharedWithStr, "Shared With")) return $err;
 
     // Insert event
     $stmt = $pdo->prepare("INSERT INTO Events (user_id, title, date, time, description, reminder, external_link, shared_with) 
@@ -417,7 +433,7 @@ function getEvents($userId, $sort = 'date ASC') {
 }
 
 // Edit event
-function editEvent($userId, $eventId, $title, $date, $time, $description, $reminder, $externalLink = '', $sharedWith = []) {
+function editEvent($userId, $eventId, $title, $date, $time, $description, $reminder, $externalLink = '', $sharedWithStr = '') {
     $pdo = getDBConnection();
     
     if (!checkOwnership($pdo, 'Events', 'event_id', $eventId, $userId)) return "No permission to edit.";
@@ -429,8 +445,7 @@ function editEvent($userId, $eventId, $title, $date, $time, $description, $remin
     if (!empty($description) && strlen($description) > 500) return "Description too long (max 500 characters).";
     if (!in_array($reminder, ['none', '1_hour', '1_day'])) return "Invalid reminder option.";
     if ($err = validateUrl($externalLink)) return $err;
-
-    $sharedWithStr = implode(',', $sharedWith);
+    if ($err = validateCommaSeparated($sharedWithStr, "Shared With")) return $err;
 
     // Update event
     $stmt = $pdo->prepare("UPDATE Events SET title = :title, date = :date, time = :time, description = :description, 
