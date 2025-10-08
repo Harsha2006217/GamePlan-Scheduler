@@ -5,6 +5,10 @@
 // Description: Contains all database queries, validation logic, and helper functions.
 // Organized by sections: User Auth, Profile, Friends, Schedules, Events, Helpers.
 // Uses PDO prepared statements for security against SQL injection.
+
+// Start output buffering to prevent "headers already sent" errors
+
+
 // Require database connection
 require_once 'db.php';
 
@@ -167,7 +171,8 @@ function loginUser($email, $password) {
     updateLastActivity($pdo, $user['user_id']);
     return null; // Success
 }
-
+// Start output buffering to prevent 
+ob_start();
 // Logout
 function logout() {
     session_destroy();

@@ -3,6 +3,8 @@
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
 // Description: Fixed footer with copyright and links to privacy and contact.
+
+// No closing PHP tag here to prevent accidental whitespace output
 ?>
 <footer class="bg-secondary p-3 text-center fixed-bottom">
     © 2025 GamePlan Scheduler by Harsha Kanaparthi | 
