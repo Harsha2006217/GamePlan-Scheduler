@@ -3,22 +3,18 @@
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
 // Description: Form to edit existing events.
-
 require_once 'functions.php';
-
 checkSessionTimeout();
 if (!isLoggedIn()) {
     header("Location: login.php");
     exit;
 }
-
 $userId = getUserId();
 $id = $_GET['id'] ?? 0;
 if (!is_numeric($id)) {
     header("Location: index.php");
     exit;
 }
-
 $events = getEvents($userId);
 $event = array_filter($events, function($e) use ($id) { return $e['event_id'] == $id; });
 $event = reset($event);
@@ -27,7 +23,6 @@ if (!$event) {
     header("Location: index.php");
     exit;
 }
-
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $title = $_POST['title'] ?? '';
@@ -37,14 +32,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $reminder = $_POST['reminder'] ?? 'none';
     $externalLink = $_POST['external_link'] ?? '';
     $sharedWithStr = $_POST['shared_with_str'] ?? '';
-    $error = updateEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedWithStr);
+    $error = editEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedWithStr);
     if (!$error) {
         setMessage('success', 'Event updated successfully!');
         header("Location: index.php");
         exit;
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -57,11 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body class="bg-dark text-light">
     <?php include 'header.php'; ?>
-
     <main class="container mt-5 pt-5">
         <?php echo getMessage(); ?>
         <?php if ($error): ?><div class="alert alert-danger"><?php echo safeEcho($error); ?></div><?php endif; ?>
-
         <h2>Edit Event</h2>
         <form method="POST" onsubmit="return validateEventForm();">
             <div class="mb-3">
@@ -99,7 +91,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <button type="submit" class="btn btn-primary">Update Event</button>
         </form>
     </main>
-
     <?php include 'footer.php'; ?>
     <script src="script.js"></script>
 </body>

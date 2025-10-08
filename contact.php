@@ -2,12 +2,9 @@
 // contact.php - Contact Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Simple contact information page with form.
-
+// Description: Simple contact information page.
 require_once 'functions.php';
-
 checkSessionTimeout();
-
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $message = $_POST['message'] ?? '';
@@ -16,7 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     header("Location: contact.php");
     exit;
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -29,7 +25,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body class="bg-dark text-light">
     <?php include 'header.php'; ?>
-
     <main class="container mt-5 pt-5">
         <?php echo getMessage(); ?>
         <h1>Contact Us</h1>

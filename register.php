@@ -3,14 +3,11 @@
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
 // Description: Handles new user registration with validation.
-
 require_once 'functions.php';
-
 if (isLoggedIn()) {
     header("Location: index.php");
     exit;
 }
-
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = $_POST['username'] ?? '';
@@ -23,7 +20,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit;
     }
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="en">
