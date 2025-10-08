@@ -4,7 +4,7 @@
 // Date: 30-09-2025
 // Description: Fixed header with logo, navigation menu, and user profile icon.
 ?>
-<header class="fixed-top bg-primary p-3">
+<header class="fixed-top bg-primary p-0 shadow">
     <div class="container d-flex justify-content-between align-items-center">
         <a href="index.php" class="text-decoration-none">
             <h1 class="h4 mb-0 text-white">GamePlan Scheduler</h1>
