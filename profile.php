@@ -2,7 +2,7 @@
 // profile.php - Profile Management Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Allows adding, editing, deleting favorite games with note, and viewing profile.
+// Description: Allows adding, editing, deleting favorite games with note.
 
 require_once 'functions.php';
 
@@ -17,16 +17,22 @@ $favorites = getFavoriteGames($userId);
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_favorite'])) {
-    $title = $_POST['title'] ?? '';
-    $description = $_POST['description'] ?? '';
-    $note = $_POST['note'] ?? '';
-    $error = addFavoriteGame($userId, $title, $description, $note);
-    if (!$error) {
-        setMessage('success', 'Favorite game added!');
-        header("Location: profile.php");
-        exit;
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $error = 'Invalid CSRF token.';
+    } else {
+        $title = $_POST['title'] ?? '';
+        $description = $_POST['description'] ?? '';
+        $note = $_POST['note'] ?? '';
+        $error = addFavoriteGame($userId, $title, $description, $note);
+        if (!$error) {
+            setMessage('success', 'Favorite game added!');
+            header("Location: profile.php");
+            exit;
+        }
     }
 }
+
+$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -47,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_favorite'])) {
 
         <h2>Add Favorite Game</h2>
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="title" class="form-label">Game Title</label>
                 <input type="text" id="title" name="title" class="form-control" required maxlength="100" aria-label="Game Title">

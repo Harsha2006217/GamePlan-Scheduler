@@ -13,16 +13,22 @@ if (isLoggedIn()) {
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = $_POST['username'] ?? '';
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
-    $error = registerUser($username, $email, $password);
-    if (!$error) {
-        setMessage('success', 'Registration successful! Please login.');
-        header("Location: login.php");
-        exit;
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $error = 'Invalid CSRF token.';
+    } else {
+        $username = $_POST['username'] ?? '';
+        $email = $_POST['email'] ?? '';
+        $password = $_POST['password'] ?? '';
+        $error = registerUser($username, $email, $password);
+        if (!$error) {
+            setMessage('success', 'Registration successful! Please login.');
+            header("Location: login.php");
+            exit;
+        }
     }
 }
+
+$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -39,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <h1 class="text-center">Register</h1>
         <?php if ($error): ?><div class="alert alert-danger"><?php echo safeEcho($error); ?></div><?php endif; ?>
         <form method="POST" class="mt-4" onsubmit="return validateRegisterForm();">
+            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="username" class="form-label">Username</label>
                 <input type="text" id="username" name="username" class="form-control" required maxlength="50" aria-label="Username">

@@ -3,7 +3,7 @@
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
 // Description: Main dashboard showing friends, favorites, schedules, events, and merged calendar.
-// Includes session check, message display, and responsive tables/cards.
+// Includes session check, message display, and responsive tables/cards with sorting.
 
 require_once 'functions.php';
 
@@ -16,10 +16,13 @@ if (!isLoggedIn()) {
 $userId = getUserId();
 updateLastActivity(getDBConnection(), $userId);
 
+$sortSchedules = $_GET['sort_schedules'] ?? 'date ASC';
+$sortEvents = $_GET['sort_events'] ?? 'date ASC';
+
 $friends = getFriends($userId);
 $favorites = getFavoriteGames($userId);
-$schedules = getSchedules($userId);
-$events = getEvents($userId);
+$schedules = getSchedules($userId, $sortSchedules);
+$events = getEvents($userId, $sortEvents);
 $calendarItems = getCalendarItems($userId);
 
 ?>
@@ -83,7 +86,7 @@ $calendarItems = getCalendarItems($userId);
         </section>
 
         <section class="mb-4">
-            <h2>Schedules</h2>
+            <h2>Schedules <a href="?sort_schedules=date_ASC" class="btn btn-sm btn-light">Sort Date ASC</a> <a href="?sort_schedules=date_DESC" class="btn btn-sm btn-light">DESC</a></h2>
             <table class="table table-dark table-bordered">
                 <thead class="bg-info">
                     <tr><th>Game</th><th>Date</th><th>Time</th><th>Shared With</th><th>Actions</th></tr>
@@ -94,7 +97,7 @@ $calendarItems = getCalendarItems($userId);
                             <td><?php echo safeEcho($schedule['game_titel']); ?></td>
                             <td><?php echo safeEcho($schedule['date']); ?></td>
                             <td><?php echo safeEcho($schedule['time']); ?></td>
-                            <td><?php echo safeEcho(getUsernamesFromIds(getDBConnection(), explode(',', $schedule['friends']))); ?></td>
+                            <td><?php echo safeEcho($schedule['friends']); ?></td>
                             <td>
                                 <a href="edit_schedule.php?id=<?php echo $schedule['schedule_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
                                 <a href="delete.php?type=schedule&id=<?php echo $schedule['schedule_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
@@ -106,10 +109,10 @@ $calendarItems = getCalendarItems($userId);
         </section>
 
         <section class="mb-4">
-            <h2>Events</h2>
+            <h2>Events <a href="?sort_events=date_ASC" class="btn btn-sm btn-light">Sort Date ASC</a> <a href="?sort_events=date_DESC" class="btn btn-sm btn-light">DESC</a></h2>
             <table class="table table-dark table-bordered">
                 <thead class="bg-info">
-                    <tr><th>Title</th><th>Date</th><th>Time</th><th>Description</th><th>Reminder</th><th>External Link</th><th>Shared With</th><th>Actions</th></tr>
+                    <tr><th>Title</th><th>Date</th><th>Time</th><th>Description</th><th>Reminder</th><th>Link</th><th>Shared With</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($events as $event): ?>
@@ -119,7 +122,7 @@ $calendarItems = getCalendarItems($userId);
                             <td><?php echo safeEcho($event['time']); ?></td>
                             <td><?php echo safeEcho($event['description']); ?></td>
                             <td><?php echo safeEcho($event['reminder']); ?></td>
-                            <td><a href="<?php echo safeEcho($event['external_link']); ?>" target="_blank"><?php echo safeEcho($event['external_link']); ?></a></td>
+                            <td><a href="<?php echo safeEcho($event['external_link']); ?>" target="_blank">View</a></td>
                             <td><?php echo safeEcho($event['shared_with']); ?></td>
                             <td>
                                 <a href="edit_event.php?id=<?php echo $event['event_id']; ?>" class="btn btn-sm btn-warning">Edit</a>

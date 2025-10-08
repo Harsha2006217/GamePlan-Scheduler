@@ -54,10 +54,6 @@ function validateScheduleForm() {
         alert('Game title is required and cannot be only spaces.');
         return false;
     }
-    if (gameTitle.length > 100) {
-        alert('Game title too long (max 100 characters).');
-        return false;
-    }
     if (!date || new Date(date) < new Date()) {
         alert('Date must be in the future.');
         return false;
@@ -97,8 +93,8 @@ function validateEventForm() {
         alert('Description too long (max 500 characters).');
         return false;
     }
-    if (externalLink && !/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(externalLink)) {
-        alert('Invalid external link format.');
+    if (externalLink && !/^(http|https):\/\/[^ "]+$/.test(externalLink)) {
+        alert('Invalid URL format.');
         return false;
     }
     return true;
@@ -106,5 +102,7 @@ function validateEventForm() {
 
 // Reminder pop-ups (simulated)
 document.addEventListener('DOMContentLoaded', function() {
+    // Fetch events and check reminders
+    // For demo, alert if reminder due
     console.log('Checking for reminders...');
 });

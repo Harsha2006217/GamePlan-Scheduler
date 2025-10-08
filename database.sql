@@ -2,7 +2,7 @@
 -- Author: Harsha Kanaparthi
 -- Date: 30-09-2025
 -- Description: Creates the gameplan_db database with 7 tables, relationships, and indexes.
--- Added deleted_at for soft delete, note in Friends and UserGames, external_link in Events.
+-- Added deleted_at for soft delete, note in Friends and UserGames, external_link and shared_with in Events.
 
 CREATE DATABASE IF NOT EXISTS gameplan_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -47,20 +47,20 @@ CREATE TABLE IF NOT EXISTS Friends (
     FOREIGN KEY (friend_user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Schedules Table
+-- Schedules Table with shared_with as text
 CREATE TABLE IF NOT EXISTS Schedules (
     schedule_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     game_id INT NOT NULL,
     date DATE NOT NULL,
     time TIME NOT NULL,
-    friends TEXT,
+    shared_with TEXT,  -- Comma-separated usernames
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Events Table with external_link
+-- Events Table with external_link and shared_with
 CREATE TABLE IF NOT EXISTS Events (
     event_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -70,18 +70,13 @@ CREATE TABLE IF NOT EXISTS Events (
     description TEXT,
     reminder VARCHAR(50),
     external_link VARCHAR(255),
+    shared_with TEXT,  -- Comma-separated usernames
     deleted_at TIMESTAMP NULL,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- EventUserMap Table
-CREATE TABLE IF NOT EXISTS EventUserMap (
-    event_id INT NOT NULL,
-    friend_id INT NOT NULL,
-    PRIMARY KEY (event_id, friend_id),
-    FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
-    FOREIGN KEY (friend_id) REFERENCES Users(user_id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- EventUserMap Table (not used since shared_with is text)
+-- If needed for relations, can add back
 
 -- Indexes for performance
 CREATE INDEX idx_users_email ON Users(email);

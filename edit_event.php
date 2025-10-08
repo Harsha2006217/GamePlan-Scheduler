@@ -28,24 +28,28 @@ if (!$event) {
     exit;
 }
 
-$sharedWithStr = $event['shared_with'];
-
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $title = $_POST['title'] ?? '';
-    $date = $_POST['date'] ?? '';
-    $time = $_POST['time'] ?? '';
-    $description = $_POST['description'] ?? '';
-    $reminder = $_POST['reminder'] ?? 'none';
-    $externalLink = $_POST['external_link'] ?? '';
-    $sharedWithStrPost = $_POST['shared_with'] ?? '';
-    $error = editEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedWithStrPost);
-    if (!$error) {
-        setMessage('success', 'Event updated successfully!');
-        header("Location: index.php");
-        exit;
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $error = 'Invalid CSRF token.';
+    } else {
+        $title = $_POST['title'] ?? '';
+        $date = $_POST['date'] ?? '';
+        $time = $_POST['time'] ?? '';
+        $description = $_POST['description'] ?? '';
+        $reminder = $_POST['reminder'] ?? 'none';
+        $externalLink = $_POST['external_link'] ?? '';
+        $sharedWith = explode(',', $_POST['shared_with'] ?? '');
+        $error = editEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedWith);
+        if (!$error) {
+            setMessage('success', 'Event updated successfully!');
+            header("Location: index.php");
+            exit;
+        }
     }
 }
+
+$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -66,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         <h2>Edit Event</h2>
         <form method="POST" onsubmit="return validateEventForm();">
+            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="title" class="form-label">Title</label>
                 <input type="text" id="title" name="title" class="form-control" required maxlength="100" value="<?php echo safeEcho($event['title']); ?>" aria-label="Title">
@@ -95,8 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="url" id="external_link" name="external_link" class="form-control" value="<?php echo safeEcho($event['external_link']); ?>" aria-label="External Link">
             </div>
             <div class="mb-3">
-                <label for="shared_with" class="form-label">Shared With (comma-separated usernames, optional)</label>
-                <input type="text" id="shared_with" name="shared_with" class="form-control" value="<?php echo safeEcho($sharedWithStr); ?>" aria-label="Shared With">
+                <label for="shared_with" class="form-label">Shared With (comma-separated usernames)</label>
+                <input type="text" id="shared_with" name="shared_with" class="form-control" value="<?php echo safeEcho($event['shared_with']); ?>" aria-label="Shared With">
             </div>
             <button type="submit" class="btn btn-primary">Update Event</button>
         </form>

@@ -2,7 +2,7 @@
 // add_event.php - Add Event Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add new events with external link, shared with text.
+// Description: Form to add new events with external link input and shared with text input.
 
 require_once 'functions.php';
 
@@ -16,20 +16,26 @@ $userId = getUserId();
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $title = $_POST['title'] ?? '';
-    $date = $_POST['date'] ?? '';
-    $time = $_POST['time'] ?? '';
-    $description = $_POST['description'] ?? '';
-    $reminder = $_POST['reminder'] ?? 'none';
-    $externalLink = $_POST['external_link'] ?? '';
-    $sharedWithStr = $_POST['shared_with'] ?? '';
-    $error = addEvent($userId, $title, $date, $time, $description, $reminder, $externalLink, $sharedWithStr);
-    if (!$error) {
-        setMessage('success', 'Event added successfully!');
-        header("Location: index.php");
-        exit;
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $error = 'Invalid CSRF token.';
+    } else {
+        $title = $_POST['title'] ?? '';
+        $date = $_POST['date'] ?? '';
+        $time = $_POST['time'] ?? '';
+        $description = $_POST['description'] ?? '';
+        $reminder = $_POST['reminder'] ?? 'none';
+        $externalLink = $_POST['external_link'] ?? '';
+        $sharedWith = explode(',', $_POST['shared_with'] ?? '');
+        $error = addEvent($userId, $title, $date, $time, $description, $reminder, $externalLink, $sharedWith);
+        if (!$error) {
+            setMessage('success', 'Event added successfully!');
+            header("Location: index.php");
+            exit;
+        }
     }
 }
+
+$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -50,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         <h2>Add Event</h2>
         <form method="POST" onsubmit="return validateEventForm();">
+            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="title" class="form-label">Title</label>
                 <input type="text" id="title" name="title" class="form-control" required maxlength="100" aria-label="Title">
@@ -79,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="url" id="external_link" name="external_link" class="form-control" aria-label="External Link">
             </div>
             <div class="mb-3">
-                <label for="shared_with" class="form-label">Shared With (comma-separated usernames, optional)</label>
+                <label for="shared_with" class="form-label">Shared With (comma-separated usernames)</label>
                 <input type="text" id="shared_with" name="shared_with" class="form-control" aria-label="Shared With">
             </div>
             <button type="submit" class="btn btn-primary">Add Event</button>

@@ -15,15 +15,21 @@ if (!isLoggedIn()) {
 $userId = getUserId();
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $friendUsername = $_POST['friend_username'] ?? '';
-    $note = $_POST['note'] ?? '';
-    $error = addFriend($userId, $friendUsername, $note);
-    if (!$error) {
-        setMessage('success', 'Friend added successfully!');
-        header("Location: index.php");
-        exit;
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $error = 'Invalid CSRF token.';
+    } else {
+        $friendUsername = $_POST['friend_username'] ?? '';
+        $note = $_POST['note'] ?? '';
+        $error = addFriend($userId, $friendUsername, $note);
+        if (!$error) {
+            setMessage('success', 'Friend added successfully!');
+            header("Location: index.php");
+            exit;
+        }
     }
 }
+
+$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -44,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         <h2>Add Friend</h2>
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="friend_username" class="form-label">Friend's Username</label>
                 <input type="text" id="friend_username" name="friend_username" class="form-control" required maxlength="50" aria-label="Friend's Username">
@@ -54,6 +61,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             <button type="submit" class="btn btn-primary">Add Friend</button>
         </form>
+
+        <h2 class="mt-4">Your Friends</h2>
+        <table class="table table-dark table-bordered">
+            <thead class="bg-info">
+                <tr><th>Username</th><th>Status</th><th>Note</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                <?php $friends = getFriends($userId); foreach ($friends as $friend): ?>
+                    <tr>
+                        <td><?php echo safeEcho($friend['username']); ?></td>
+                        <td><?php echo $friend['status']; ?></td>
+                        <td><?php echo safeEcho($friend['note']); ?></td>
+                        <td>
+                            <a href="edit_friend.php?id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-warning">Edit Note</a>
+                            <a href="delete.php?type=friend&id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Remove</a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </main>
 
     <?php include 'footer.php'; ?>
