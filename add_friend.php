@@ -10,6 +10,7 @@ if (!isLoggedIn()) {
     exit;
 }
 $userId = getUserId();
+$friends = getFriends($userId);
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $friendUsername = $_POST['friend_username'] ?? '';
@@ -17,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $error = addFriend($userId, $friendUsername, $note);
     if (!$error) {
         setMessage('success', 'Friend added successfully!');
-        header("Location: index.php");
+        header("Location: add_friend.php");
         exit;
     }
 }
@@ -48,6 +49,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             <button type="submit" class="btn btn-primary">Add Friend</button>
         </form>
+        <h2 class="mt-4">Your Friends</h2>
+        <table class="table table-dark table-bordered">
+            <thead class="bg-info">
+                <tr><th>Username</th><th>Status</th><th>Note</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                <?php foreach ($friends as $friend): ?>
+                    <tr>
+                        <td><?php echo safeEcho($friend['username']); ?></td>
+                        <td><?php echo $friend['status']; ?></td>
+                        <td><?php echo safeEcho($friend['note']); ?></td>
+                        <td>
+                            <a href="edit_friend.php?id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
+                            <a href="delete.php?type=friend&id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     </main>
     <?php include 'footer.php'; ?>
 </body>

@@ -17,6 +17,7 @@ function validateLoginForm() {
     }
     return true;
 }
+
 // Register form validation
 function validateRegisterForm() {
     const username = document.getElementById('username').value.trim();
@@ -41,6 +42,7 @@ function validateRegisterForm() {
     }
     return true;
 }
+
 // Schedule form validation
 function validateScheduleForm() {
     const gameTitle = document.getElementById('game_title').value.trim();
@@ -71,6 +73,7 @@ function validateScheduleForm() {
     }
     return true;
 }
+
 // Event form validation
 function validateEventForm() {
     const title = document.getElementById('title').value.trim();
@@ -100,7 +103,7 @@ function validateEventForm() {
         alert('Description too long (max 500 characters).');
         return false;
     }
-    if (externalLink && !/^(https?:\/\/)?[\w\-]+(\.[\w\-]+)+[\/#?]?.*$/.test(externalLink)) {
+    if (externalLink && !/^(https?:\/\/)?[\w-]+(\.[\w-]+)+[/#?]?.*$/.test(externalLink)) {
         alert('Invalid external link format.');
         return false;
     }
@@ -110,6 +113,7 @@ function validateEventForm() {
     }
     return true;
 }
+
 // Reminder pop-ups (simulated)
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Checking for reminders...');

@@ -12,7 +12,7 @@ if (!isLoggedIn()) {
 $userId = getUserId();
 $id = $_GET['id'] ?? 0;
 if (!is_numeric($id)) {
-    header("Location: index.php");
+    header("Location: add_friend.php");
     exit;
 }
 $friends = getFriends($userId);
@@ -20,16 +20,16 @@ $friend = array_filter($friends, function($f) use ($id) { return $f['user_id'] =
 $friend = reset($friend);
 if (!$friend) {
     setMessage('danger', 'Friend not found.');
-    header("Location: index.php");
+    header("Location: add_friend.php");
     exit;
 }
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $note = $_POST['note'] ?? '';
-    $error = updateFriendNote($userId, $id, $note);
+    $error = updateFriend($userId, $id, $note);
     if (!$error) {
         setMessage('success', 'Friend note updated!');
-        header("Location: index.php");
+        header("Location: add_friend.php");
         exit;
     }
 }

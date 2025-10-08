@@ -17,7 +17,7 @@
                 <ul class="navbar-nav">
                     <li class="nav-item"><a class="nav-link text-white" href="index.php">Home</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="profile.php">Profile</a></li>
-                    <li class="nav-item"><a class="nav-link text-white" href="add_friend.php">Add Friend</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="add_friend.php">Friends</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="add_schedule.php">Add Schedule</a></li>
                     <li class="nav-item"><a class="nav-link text-white btn btn-success ms-2" href="add_event.php">Add Event</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="index.php?logout=1">Logout</a></li>

@@ -7,16 +7,19 @@
 // Uses PDO prepared statements for security against SQL injection.
 // Require database connection
 require_once 'db.php';
+
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
     session_regenerate_id(true); // Regenerate session ID for security
 }
+
 // --- Helper Functions ---
 // Secure output escaping
 function safeEcho($string) {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
 }
+
 // Validate required fields and trim
 function validateRequired($value, $fieldName, $maxLength = 0) {
     $value = trim($value);
@@ -28,6 +31,7 @@ function validateRequired($value, $fieldName, $maxLength = 0) {
     }
     return null;
 }
+
 // Validate date (future date only)
 function validateDate($date) {
     if (strtotime($date) === false) {
@@ -38,6 +42,7 @@ function validateDate($date) {
     }
     return null;
 }
+
 // Validate time (positive, valid format)
 function validateTime($time) {
     if (!preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/', $time)) {
@@ -45,6 +50,7 @@ function validateTime($time) {
     }
     return null;
 }
+
 // Validate email
 function validateEmail($email) {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -52,6 +58,7 @@ function validateEmail($email) {
     }
     return null;
 }
+
 // Validate URL
 function validateUrl($url) {
     if (!empty($url) && !filter_var($url, FILTER_VALIDATE_URL)) {
@@ -59,6 +66,7 @@ function validateUrl($url) {
     }
     return null;
 }
+
 // Validate comma-separated IDs or usernames
 function validateCommaSeparated($value, $fieldName) {
     if (empty($value)) return null;
@@ -69,10 +77,12 @@ function validateCommaSeparated($value, $fieldName) {
     }
     return null;
 }
+
 // Set session message
 function setMessage($type, $msg) {
     $_SESSION['message'] = ['type' => $type, 'msg' => $msg];
 }
+
 // Get and clear session message
 function getMessage() {
     if (isset($_SESSION['message'])) {
@@ -82,19 +92,23 @@ function getMessage() {
     }
     return '';
 }
+
 // Check if user is logged in
 function isLoggedIn() {
     return isset($_SESSION['user_id']);
 }
+
 // Get current user ID
 function getUserId() {
     return isLoggedIn() ? (int)$_SESSION['user_id'] : 0;
 }
+
 // Update last activity for online status
 function updateLastActivity($pdo, $userId) {
     $stmt = $pdo->prepare("UPDATE Users SET last_activity = CURRENT_TIMESTAMP WHERE user_id = :user_id AND deleted_at IS NULL");
     $stmt->execute(['user_id' => $userId]);
 }
+
 // Session timeout check (30 minutes)
 function checkSessionTimeout() {
     if (isLoggedIn() && isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 1800)) {
@@ -104,6 +118,7 @@ function checkSessionTimeout() {
     }
     $_SESSION['last_activity'] = time();
 }
+
 // --- User Authentication ---
 // Register new user
 function registerUser($username, $email, $password) {
@@ -130,6 +145,7 @@ function registerUser($username, $email, $password) {
         return "Registration failed. Please try again.";
     }
 }
+
 // Login user
 function loginUser($email, $password) {
     $pdo = getDBConnection();
@@ -151,12 +167,14 @@ function loginUser($email, $password) {
     updateLastActivity($pdo, $user['user_id']);
     return null; // Success
 }
+
 // Logout
 function logout() {
     session_destroy();
     header("Location: login.php");
     exit;
 }
+
 // --- Profile Management ---
 // Get or create game ID by title
 function getOrCreateGameId($pdo, $title, $description = '') {
@@ -172,6 +190,7 @@ function getOrCreateGameId($pdo, $title, $description = '') {
     $stmt->execute(['titel' => $title, 'description' => $description]);
     return $pdo->lastInsertId();
 }
+
 // Add favorite game
 function addFavoriteGame($userId, $title, $description = '', $note = '') {
     $pdo = getDBConnection();
@@ -187,6 +206,7 @@ function addFavoriteGame($userId, $title, $description = '', $note = '') {
     $stmt->execute(['user_id' => $userId, 'game_id' => $gameId, 'note' => $note]);
     return null;
 }
+
 // Update favorite game
 function updateFavoriteGame($userId, $gameId, $title, $description, $note) {
     $pdo = getDBConnection();
@@ -204,6 +224,7 @@ function updateFavoriteGame($userId, $gameId, $title, $description, $note) {
     $stmt->execute(['note' => $note, 'user_id' => $userId, 'game_id' => $gameId]);
     return null;
 }
+
 // Delete favorite game
 function deleteFavoriteGame($userId, $gameId) {
     $pdo = getDBConnection();
@@ -212,6 +233,7 @@ function deleteFavoriteGame($userId, $gameId) {
     $stmt->execute(['user_id' => $userId, 'game_id' => $gameId]);
     return null;
 }
+
 // Get favorite games
 function getFavoriteGames($userId) {
     $pdo = getDBConnection();
@@ -219,35 +241,41 @@ function getFavoriteGames($userId) {
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
+
 // --- Friends Management ---
-// Get user ID by username
-function getUserIdByUsername($pdo, $username) {
+// Get or create friend ID by username
+function getOrCreateFriendId($pdo, $username) {
     $username = trim($username);
     if (empty($username)) return 0;
+    // Check if exists
     $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE LOWER(username) = LOWER(:username) AND deleted_at IS NULL");
     $stmt->execute(['username' => $username]);
     $row = $stmt->fetch();
-    return $row ? $row['user_id'] : 0;
+    if ($row) return $row['user_id'];
+    // If not found, do not create automatically; return error
+    return 0;
 }
+
 // Add friend
 function addFriend($userId, $friendUsername, $note = '') {
     $pdo = getDBConnection();
     
     if ($err = validateRequired($friendUsername, "Friend username", 50)) return $err;
-    $friendId = getUserIdByUsername($pdo, $friendUsername);
+    $friendId = getOrCreateFriendId($pdo, $friendUsername);
     if ($friendId == 0) return "User not found.";
     if ($friendId == $userId) return "Cannot add yourself as friend.";
     // Check if already friends
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = :user_id AND friend_user_id = :friend_id AND deleted_at IS NULL");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId]);
     if ($stmt->fetchColumn() > 0) return "Already friends.";
-    // Insert mutual with note
-    $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_user_id, note) VALUES (:user_id, :friend_id, :note), (:friend_id, :user_id, '')");
+    // Insert with note
+    $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_user_id, note) VALUES (:user_id, :friend_id, :note)");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId, 'note' => $note]);
     return null;
 }
+
 // Update friend note
-function updateFriendNote($userId, $friendId, $note) {
+function updateFriend($userId, $friendId, $note) {
     $pdo = getDBConnection();
     
     // Check if friends
@@ -258,23 +286,27 @@ function updateFriendNote($userId, $friendId, $note) {
     $stmt->execute(['note' => $note, 'user_id' => $userId, 'friend_id' => $friendId]);
     return null;
 }
+
 // Delete friend
 function deleteFriend($userId, $friendId) {
     $pdo = getDBConnection();
     
-    $stmt = $pdo->prepare("UPDATE Friends SET deleted_at = NOW() WHERE (user_id = :user_id AND friend_user_id = :friend_id) OR (user_id = :friend_id AND user_id = :user_id)");
+    $stmt = $pdo->prepare("UPDATE Friends SET deleted_at = NOW() WHERE user_id = :user_id AND friend_user_id = :friend_id");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId]);
     return null;
 }
+
 // Get friends list with online status and note
 function getFriends($userId) {
     $pdo = getDBConnection();
-    $stmt = $pdo->prepare("SELECT u.user_id, u.username, f.note,
+    $stmt = $pdo->prepare("SELECT u.user_id, u.username, f.note, 
                            CASE WHEN u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 'Online' ELSE 'Offline' END AS status
-                           FROM Friends f JOIN Users u ON f.friend_user_id = u.user_id WHERE f.user_id = :user_id AND f.deleted_at IS NULL AND u.deleted_at IS NULL");
+                           FROM Friends f JOIN Users u ON f.friend_user_id = u.user_id 
+                           WHERE f.user_id = :user_id AND f.deleted_at IS NULL AND u.deleted_at IS NULL");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
+
 // --- Schedules Management ---
 // Add schedule
 function addSchedule($userId, $gameTitle, $date, $time, $friendsStr = '', $sharedWithStr = '') {
@@ -292,15 +324,18 @@ function addSchedule($userId, $gameTitle, $date, $time, $friendsStr = '', $share
     $stmt->execute(['user_id' => $userId, 'game_id' => $gameId, 'date' => $date, 'time' => $time, 'friends' => $friendsStr, 'shared_with' => $sharedWithStr]);
     return null;
 }
+
 // Get schedules
 function getSchedules($userId, $sort = 'date ASC') {
     $pdo = getDBConnection();
     $sort = in_array($sort, ['date ASC', 'date DESC', 'time ASC', 'time DESC']) ? $sort : 'date ASC';
     $stmt = $pdo->prepare("SELECT s.schedule_id, g.titel AS game_titel, s.date, s.time, s.friends, s.shared_with
-                           FROM Schedules s JOIN Games g ON s.game_id = g.game_id WHERE s.user_id = :user_id AND s.deleted_at IS NULL ORDER BY $sort LIMIT 50");
+                           FROM Schedules s JOIN Games g ON s.game_id = g.game_id 
+                           WHERE s.user_id = :user_id AND s.deleted_at IS NULL ORDER BY $sort LIMIT 50");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
+
 // Edit schedule
 function editSchedule($userId, $scheduleId, $gameTitle, $date, $time, $friendsStr = '', $sharedWithStr = '') {
     $pdo = getDBConnection();
@@ -319,6 +354,7 @@ function editSchedule($userId, $scheduleId, $gameTitle, $date, $time, $friendsSt
     $stmt->execute(['game_id' => $gameId, 'date' => $date, 'time' => $time, 'friends' => $friendsStr, 'shared_with' => $sharedWithStr, 'id' => $scheduleId, 'user_id' => $userId]);
     return null;
 }
+
 // Soft delete schedule
 function deleteSchedule($userId, $scheduleId) {
     $pdo = getDBConnection();
@@ -328,6 +364,7 @@ function deleteSchedule($userId, $scheduleId) {
     $stmt->execute(['id' => $scheduleId, 'user_id' => $userId]);
     return null;
 }
+
 // --- Events Management ---
 // Add event
 function addEvent($userId, $title, $date, $time, $description, $reminder, $externalLink = '', $sharedWithStr = '') {
@@ -348,8 +385,10 @@ function addEvent($userId, $title, $date, $time, $description, $reminder, $exter
         'user_id' => $userId, 'title' => $title, 'date' => $date, 'time' => $time,
         'description' => $description, 'reminder' => $reminder, 'external_link' => $externalLink, 'shared_with' => $sharedWithStr
     ]);
+    $eventId = $pdo->lastInsertId();
     return null;
 }
+
 // Get events
 function getEvents($userId, $sort = 'date ASC') {
     $pdo = getDBConnection();
@@ -359,6 +398,7 @@ function getEvents($userId, $sort = 'date ASC') {
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
+
 // Edit event
 function editEvent($userId, $eventId, $title, $date, $time, $description, $reminder, $externalLink = '', $sharedWithStr = '') {
     $pdo = getDBConnection();
@@ -381,6 +421,7 @@ function editEvent($userId, $eventId, $title, $date, $time, $description, $remin
     ]);
     return null;
 }
+
 // Soft delete event
 function deleteEvent($userId, $eventId) {
     $pdo = getDBConnection();
@@ -390,6 +431,7 @@ function deleteEvent($userId, $eventId) {
     $stmt->execute(['id' => $eventId, 'user_id' => $userId]);
     return null;
 }
+
 // --- Games Management ---
 // Get all games
 function getGames() {
@@ -397,12 +439,14 @@ function getGames() {
     $stmt = $pdo->query("SELECT game_id, titel, description FROM Games WHERE deleted_at IS NULL ORDER BY titel");
     return $stmt->fetchAll();
 }
+
 // --- Ownership Check Helper ---
 function checkOwnership($pdo, $table, $idColumn, $id, $userId) {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM $table WHERE $idColumn = :id AND user_id = :user_id AND deleted_at IS NULL");
     $stmt->execute(['id' => $id, 'user_id' => $userId]);
     return $stmt->fetchColumn() > 0;
 }
+
 // --- Calendar Merge ---
 function getCalendarItems($userId) {
     $schedules = getSchedules($userId);
@@ -416,6 +460,7 @@ function getCalendarItems($userId) {
     });
     return $items;
 }
+
 // --- Reminder Handling (JS simulated) ---
 function getReminders($userId) {
     // For JS to handle pop-ups

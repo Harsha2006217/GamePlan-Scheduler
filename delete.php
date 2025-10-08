@@ -29,6 +29,6 @@ if ($error) {
 } else {
     setMessage('success', ucfirst($type) . ' deleted successfully!');
 }
-header("Location: " . ($type == 'favorite' ? 'profile.php' : 'index.php'));
+header("Location: " . ($type == 'favorite' ? 'profile.php' : ($type == 'friend' ? 'add_friend.php' : 'index.php')));
 exit;
 ?>

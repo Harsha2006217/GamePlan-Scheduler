@@ -6,8 +6,8 @@
 // Uses try-catch for robust connection management and sets attributes for prepared statements.
 // Database configuration constants for security and modularity
 define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_USER', 'root'); // Replace with actual username in production
+define('DB_PASS', '');     // Replace with actual password in production
 define('DB_NAME', 'gameplan_db');
 define('DB_CHARSET', 'utf8mb4');
 

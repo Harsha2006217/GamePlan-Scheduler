@@ -2,7 +2,7 @@
 // add_schedule.php - Add Schedule Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add schedule with game title input, date, time, friends str, shared with str.
+// Description: Form to add new schedules with game title input, date, time, friends str, shared with str.
 require_once 'functions.php';
 checkSessionTimeout();
 if (!isLoggedIn()) {
