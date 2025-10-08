@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $reminder = $_POST['reminder'] ?? 'none';
     $externalLink = $_POST['external_link'] ?? '';
     $sharedWithStr = $_POST['shared_with_str'] ?? '';
-    $error = editEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedWithStr);
+    $error = updateEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedWithStr);
     if (!$error) {
         setMessage('success', 'Event updated successfully!');
         header("Location: index.php");

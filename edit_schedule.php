@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $time = $_POST['time'] ?? '';
     $friendsStr = $_POST['friends_str'] ?? '';
     $sharedWithStr = $_POST['shared_with_str'] ?? '';
-    $error = editSchedule($userId, $id, $gameTitle, $date, $time, $friendsStr, $sharedWithStr);
+    $error = updateSchedule($userId, $id, $gameTitle, $date, $time, $friendsStr, $sharedWithStr);
     if (!$error) {
         setMessage('success', 'Schedule updated successfully!');
         header("Location: index.php");

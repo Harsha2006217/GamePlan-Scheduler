@@ -15,7 +15,7 @@ if (!isLoggedIn()) {
 $userId = getUserId();
 $id = $_GET['id'] ?? 0;
 if (!is_numeric($id)) {
-    header("Location: profile.php");
+    header("Location: add_favorite.php");
     exit;
 }
 
@@ -24,7 +24,7 @@ $game = array_filter($favorites, function($g) use ($id) { return $g['game_id'] =
 $game = reset($game);
 if (!$game) {
     setMessage('danger', 'Game not found or no permission.');
-    header("Location: profile.php");
+    header("Location: add_favorite.php");
     exit;
 }
 
@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $error = updateFavoriteGame($userId, $id, $title, $description, $note);
     if (!$error) {
         setMessage('success', 'Favorite game updated!');
-        header("Location: profile.php");
+        header("Location: add_favorite.php");
         exit;
     }
 }
