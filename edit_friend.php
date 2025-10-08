@@ -48,11 +48,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <main class="container mt-5 pt-5">
         <?php echo getMessage(); ?>
         <?php if ($error): ?><div class="alert alert-danger"><?php echo safeEcho($error); ?></div><?php endif; ?>
-        <h2>Edit Note for <?php echo safeEcho($friend['username']); ?></h2>
+        <h2>Edit Details for <?php echo safeEcho($friend['username']); ?></h2>
         <form method="POST">
             <div class="mb-3">
-                <label for="note" class="form-label">Note</label>
-                <textarea id="note" name="note" class="form-control" rows="2" aria-label="Note"><?php echo safeEcho($friend['note']); ?></textarea>
+                <label for="friend_username" class="form-label">Friend's Username</label>
+                <input type="text" id="friend_username" name="friend_username" class="form-control" required maxlength="50" aria-label="Friend's Username">
+            </div>
+            <div class="mb-3">
+                <label for="note" class="form-label">Note (Optional)</label>
+                <textarea id="note" name="note" class="form-control" rows="2" aria-label="Note"></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="status" class="form-label">Status</label>
+                <textarea id="status" name="status" class="form-control" rows="1" aria-label="Status"></textarea>
+                </select>
             </div>
             <button type="submit" class="btn btn-primary">Update Note</button>
         </form>

@@ -47,6 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <label for="note" class="form-label">Note (Optional)</label>
                 <textarea id="note" name="note" class="form-control" rows="2" aria-label="Note"></textarea>
             </div>
+            <div class="mb-3">
+                <label for="status" class="form-label">Status</label>
+                <textarea id="status" name="status" class="form-control" rows="1" aria-label="Status"></textarea>
+                </select>
+            </div>
             <button type="submit" class="btn btn-primary">Add Friend</button>
         </form>
         <h2 class="mt-4">Your Friends</h2>
