@@ -243,47 +243,34 @@ function getFavoriteGames($userId) {
 }
 
 // --- Friends Management ---
-// Get or create friend ID by username
-function getOrCreateFriendId($pdo, $username) {
-    $username = trim($username);
-    if (empty($username)) return 0;
-    // Check if exists
-    $stmt = $pdo->prepare("SELECT user_id FROM Users WHERE LOWER(username) = LOWER(:username) AND deleted_at IS NULL");
-    $stmt->execute(['username' => $username]);
-    $row = $stmt->fetch();
-    if ($row) return $row['user_id'];
-    // If not found, do not create automatically; return error
-    return 0;
-}
-
 // Add friend
-function addFriend($userId, $friendUsername, $note = '') {
+function addFriend($userId, $friendUsername, $note = '', $status = 'Offline') {
     $pdo = getDBConnection();
     
     if ($err = validateRequired($friendUsername, "Friend username", 50)) return $err;
-    $friendId = getOrCreateFriendId($pdo, $friendUsername);
-    if ($friendId == 0) return "User not found.";
-    if ($friendId == $userId) return "Cannot add yourself as friend.";
+    if ($err = validateRequired($status, "Status", 50)) return $err;
     // Check if already friends
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = :user_id AND friend_user_id = :friend_id AND deleted_at IS NULL");
-    $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId]);
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = :user_id AND LOWER(friend_username) = LOWER(:friend_username) AND deleted_at IS NULL");
+    $stmt->execute(['user_id' => $userId, 'friend_username' => $friendUsername]);
     if ($stmt->fetchColumn() > 0) return "Already friends.";
-    // Insert with note
-    $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_user_id, note) VALUES (:user_id, :friend_id, :note)");
-    $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId, 'note' => $note]);
+    // Insert
+    $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_username, note, status) VALUES (:user_id, :friend_username, :note, :status)");
+    $stmt->execute(['user_id' => $userId, 'friend_username' => $friendUsername, 'note' => $note, 'status' => $status]);
     return null;
 }
 
-// Update friend note
-function updateFriend($userId, $friendId, $note) {
+// Update friend
+function updateFriend($userId, $friendId, $friendUsername, $note, $status) {
     $pdo = getDBConnection();
     
-    // Check if friends
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = :user_id AND friend_user_id = :friend_id AND deleted_at IS NULL");
+    if ($err = validateRequired($friendUsername, "Friend username", 50)) return $err;
+    if ($err = validateRequired($status, "Status", 50)) return $err;
+    // Check ownership
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM Friends WHERE user_id = :user_id AND friend_id = :friend_id AND deleted_at IS NULL");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId]);
-    if ($stmt->fetchColumn() == 0) return "Not friends.";
-    $stmt = $pdo->prepare("UPDATE Friends SET note = :note WHERE user_id = :user_id AND friend_user_id = :friend_id AND deleted_at IS NULL");
-    $stmt->execute(['note' => $note, 'user_id' => $userId, 'friend_id' => $friendId]);
+    if ($stmt->fetchColumn() == 0) return "Not friends or no permission.";
+    $stmt = $pdo->prepare("UPDATE Friends SET friend_username = :friend_username, note = :note, status = :status WHERE user_id = :user_id AND friend_id = :friend_id AND deleted_at IS NULL");
+    $stmt->execute(['friend_username' => $friendUsername, 'note' => $note, 'status' => $status, 'user_id' => $userId, 'friend_id' => $friendId]);
     return null;
 }
 
@@ -291,18 +278,15 @@ function updateFriend($userId, $friendId, $note) {
 function deleteFriend($userId, $friendId) {
     $pdo = getDBConnection();
     
-    $stmt = $pdo->prepare("UPDATE Friends SET deleted_at = NOW() WHERE user_id = :user_id AND friend_user_id = :friend_id");
+    $stmt = $pdo->prepare("UPDATE Friends SET deleted_at = NOW() WHERE user_id = :user_id AND friend_id = :friend_id");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId]);
     return null;
 }
 
-// Get friends list with online status and note
+// Get friends list with status and note
 function getFriends($userId) {
     $pdo = getDBConnection();
-    $stmt = $pdo->prepare("SELECT u.user_id, u.username, f.note, 
-                           CASE WHEN u.last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 'Online' ELSE 'Offline' END AS status
-                           FROM Friends f JOIN Users u ON f.friend_user_id = u.user_id 
-                           WHERE f.user_id = :user_id AND f.deleted_at IS NULL AND u.deleted_at IS NULL");
+    $stmt = $pdo->prepare("SELECT friend_id, friend_username as username, status, note FROM Friends WHERE user_id = :user_id AND deleted_at IS NULL");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
@@ -329,9 +313,7 @@ function addSchedule($userId, $gameTitle, $date, $time, $friendsStr = '', $share
 function getSchedules($userId, $sort = 'date ASC') {
     $pdo = getDBConnection();
     $sort = in_array($sort, ['date ASC', 'date DESC', 'time ASC', 'time DESC']) ? $sort : 'date ASC';
-    $stmt = $pdo->prepare("SELECT s.schedule_id, g.titel AS game_titel, s.date, s.time, s.friends, s.shared_with
-                           FROM Schedules s JOIN Games g ON s.game_id = g.game_id 
-                           WHERE s.user_id = :user_id AND s.deleted_at IS NULL ORDER BY $sort LIMIT 50");
+    $stmt = $pdo->prepare("SELECT s.schedule_id, g.titel AS game_titel, s.date, s.time, s.friends, s.shared_with FROM Schedules s JOIN Games g ON s.game_id = g.game_id WHERE s.user_id = :user_id AND s.deleted_at IS NULL ORDER BY $sort LIMIT 50");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
@@ -379,13 +361,11 @@ function addEvent($userId, $title, $date, $time, $description, $reminder, $exter
     if ($err = validateUrl($externalLink)) return $err;
     if ($err = validateCommaSeparated($sharedWithStr, "Shared With")) return $err;
     // Insert event
-    $stmt = $pdo->prepare("INSERT INTO Events (user_id, title, date, time, description, reminder, external_link, shared_with)
-                           VALUES (:user_id, :title, :date, :time, :description, :reminder, :external_link, :shared_with)");
+    $stmt = $pdo->prepare("INSERT INTO Events (user_id, title, date, time, description, reminder, external_link, shared_with) VALUES (:user_id, :title, :date, :time, :description, :reminder, :external_link, :shared_with)");
     $stmt->execute([
         'user_id' => $userId, 'title' => $title, 'date' => $date, 'time' => $time,
         'description' => $description, 'reminder' => $reminder, 'external_link' => $externalLink, 'shared_with' => $sharedWithStr
     ]);
-    $eventId = $pdo->lastInsertId();
     return null;
 }
 
@@ -393,8 +373,7 @@ function addEvent($userId, $title, $date, $time, $description, $reminder, $exter
 function getEvents($userId, $sort = 'date ASC') {
     $pdo = getDBConnection();
     $sort = in_array($sort, ['date ASC', 'date DESC', 'time ASC', 'time DESC']) ? $sort : 'date ASC';
-    $stmt = $pdo->prepare("SELECT e.event_id, e.title, e.date, e.time, e.description, e.reminder, e.external_link, e.shared_with
-                           FROM Events e WHERE e.user_id = :user_id AND e.deleted_at IS NULL ORDER BY $sort LIMIT 50");
+    $stmt = $pdo->prepare("SELECT event_id, title, date, time, description, reminder, external_link, shared_with FROM Events WHERE user_id = :user_id AND deleted_at IS NULL ORDER BY $sort LIMIT 50");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
@@ -413,8 +392,7 @@ function editEvent($userId, $eventId, $title, $date, $time, $description, $remin
     if ($err = validateUrl($externalLink)) return $err;
     if ($err = validateCommaSeparated($sharedWithStr, "Shared With")) return $err;
     // Update event
-    $stmt = $pdo->prepare("UPDATE Events SET title = :title, date = :date, time = :time, description = :description,
-                           reminder = :reminder, external_link = :external_link, shared_with = :shared_with WHERE event_id = :id AND user_id = :user_id AND deleted_at IS NULL");
+    $stmt = $pdo->prepare("UPDATE Events SET title = :title, date = :date, time = :time, description = :description, reminder = :reminder, external_link = :external_link, shared_with = :shared_with WHERE event_id = :id AND user_id = :user_id AND deleted_at IS NULL");
     $stmt->execute([
         'title' => $title, 'date' => $date, 'time' => $time, 'description' => $description,
         'reminder' => $reminder, 'external_link' => $externalLink, 'shared_with' => $sharedWithStr, 'id' => $eventId, 'user_id' => $userId

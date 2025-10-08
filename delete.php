@@ -15,20 +15,25 @@ $userId = getUserId();
 $error = '';
 if ($type == 'schedule') {
     $error = deleteSchedule($userId, $id);
+    $redirect = 'index.php';
 } elseif ($type == 'event') {
     $error = deleteEvent($userId, $id);
+    $redirect = 'index.php';
 } elseif ($type == 'favorite') {
     $error = deleteFavoriteGame($userId, $id);
+    $redirect = 'profile.php';
 } elseif ($type == 'friend') {
     $error = deleteFriend($userId, $id);
+    $redirect = 'add_friend.php';
 } else {
     $error = 'Invalid type.';
+    $redirect = 'index.php';
 }
 if ($error) {
     setMessage('danger', $error);
 } else {
     setMessage('success', ucfirst($type) . ' deleted successfully!');
 }
-header("Location: " . ($type == 'favorite' ? 'profile.php' : ($type == 'friend' ? 'add_friend.php' : 'index.php')));
+header("Location: " . $redirect);
 exit;
 ?>

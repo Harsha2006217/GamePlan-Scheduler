@@ -1,9 +1,8 @@
 -- database.sql - Database Schema Script
 -- Author: Harsha Kanaparthi
--- Date: 08-10-2025
--- Description: Creates the gameplan_db database with 7 tables, relationships, and indexes.
--- Added deleted_at for soft delete, note in Friends and UserGames, external_link and shared_with in Events and Schedules.
-
+-- Date: 30-09-2025
+-- Description: Creates the gameplan_db database with 6 tables, relationships, and indexes.
+-- Modified to use friend_username instead of friend_user_id for random friends, added status.
 CREATE DATABASE IF NOT EXISTS gameplan_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE gameplan_db;
 
@@ -35,18 +34,18 @@ CREATE TABLE IF NOT EXISTS UserGames (
     FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Friends Table with note
+-- Friends Table with friend_username, note, status
 CREATE TABLE IF NOT EXISTS Friends (
     friend_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    friend_user_id INT NOT NULL,
+    friend_username VARCHAR(50) NOT NULL,
     note TEXT,
+    status VARCHAR(50) DEFAULT 'Offline',
     deleted_at TIMESTAMP NULL,
-    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (friend_user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Schedules Table with shared_with
+-- Schedules Table with friends and shared_with as TEXT
 CREATE TABLE IF NOT EXISTS Schedules (
     schedule_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -60,7 +59,7 @@ CREATE TABLE IF NOT EXISTS Schedules (
     FOREIGN KEY (game_id) REFERENCES Games(game_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Events Table with external_link and shared_with
+-- Events Table with external_link and shared_with as TEXT
 CREATE TABLE IF NOT EXISTS Events (
     event_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -75,23 +74,13 @@ CREATE TABLE IF NOT EXISTS Events (
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- EventUserMap Table (optional for normalization, but using text for simplicity as per requirement)
-CREATE TABLE IF NOT EXISTS EventUserMap (
-    event_id INT NOT NULL,
-    friend_id INT NOT NULL,
-    PRIMARY KEY (event_id, friend_id),
-    FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
-    FOREIGN KEY (friend_id) REFERENCES Users(user_id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 -- Indexes for performance
-CREATE INDEX idx_users_email ON Users(email);
-CREATE INDEX idx_schedules_user_date ON Schedules(user_id, date);
-CREATE INDEX idx_events_user_date ON Events(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_users_email ON Users(email);
+CREATE INDEX IF NOT EXISTS idx_schedules_user_date ON Schedules(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_events_user_date ON Events(user_id, date);
 
--- Sample Data (for testing)
-INSERT INTO Users (username, email, password_hash) VALUES
-('testuser', 'test@example.com', '$2y$10$examplehash');  -- Use bcrypt hash in real
-
+-- Sample Data
 INSERT INTO Games (titel, description) VALUES
-('Fortnite', 'Battle Royale game');
+('Fortnite', 'Battle Royale game'),
+('Minecraft', 'Sandbox building game'),
+('League of Legends', 'MOBA strategy game');

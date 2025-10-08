@@ -44,11 +44,11 @@ $reminders = getReminders($userId); // For JS pop-ups
                     <?php foreach ($friends as $friend): ?>
                         <tr>
                             <td><?php echo safeEcho($friend['username']); ?></td>
-                            <td><?php echo $friend['status']; ?></td>
+                            <td><?php echo safeEcho($friend['status']); ?></td>
                             <td><?php echo safeEcho($friend['note']); ?></td>
                             <td>
-                                <a href="edit_friend.php?id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
-                                <a href="delete.php?type=friend&id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                                <a href="edit_friend.php?id=<?php echo $friend['friend_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
+                                <a href="delete.php?type=friend&id=<?php echo $friend['friend_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Remove</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -150,7 +150,7 @@ $reminders = getReminders($userId); // For JS pop-ups
         // Reminder pop-ups
         const reminders = <?php echo json_encode($reminders); ?>;
         reminders.forEach(reminder => {
-            alert(`Reminder: ${reminder.title} at ${reminder.time}`);
+            alert(`Reminder: ${reminder['title']} at ${reminder['time']}`);
         });
     </script>
 </body>

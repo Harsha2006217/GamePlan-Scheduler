@@ -2,7 +2,7 @@
 // add_friend.php - Add Friend Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add friends by username with note.
+// Description: Form to add friends by username with note and status. Shows list below for CRUD.
 require_once 'functions.php';
 checkSessionTimeout();
 if (!isLoggedIn()) {
@@ -15,7 +15,8 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $friendUsername = $_POST['friend_username'] ?? '';
     $note = $_POST['note'] ?? '';
-    $error = addFriend($userId, $friendUsername, $note);
+    $status = $_POST['status'] ?? 'Offline';
+    $error = addFriend($userId, $friendUsername, $note, $status);
     if (!$error) {
         setMessage('success', 'Friend added successfully!');
         header("Location: add_friend.php");
@@ -49,8 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             <div class="mb-3">
                 <label for="status" class="form-label">Status</label>
-                <textarea id="status" name="status" class="form-control" rows="1" aria-label="Status"></textarea>
-                </select>
+                <input type="text" id="status" name="status" class="form-control" value="Offline" maxlength="50" aria-label="Status">
             </div>
             <button type="submit" class="btn btn-primary">Add Friend</button>
         </form>
@@ -63,11 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <?php foreach ($friends as $friend): ?>
                     <tr>
                         <td><?php echo safeEcho($friend['username']); ?></td>
-                        <td><?php echo $friend['status']; ?></td>
+                        <td><?php echo safeEcho($friend['status']); ?></td>
                         <td><?php echo safeEcho($friend['note']); ?></td>
                         <td>
-                            <a href="edit_friend.php?id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
-                            <a href="delete.php?type=friend&id=<?php echo $friend['user_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                            <a href="edit_friend.php?id=<?php echo $friend['friend_id']; ?>" class="btn btn-sm btn-warning">Edit</a>
+                            <a href="delete.php?type=friend&id=<?php echo $friend['friend_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

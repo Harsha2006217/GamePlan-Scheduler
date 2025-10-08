@@ -103,7 +103,7 @@ function validateEventForm() {
         alert('Description too long (max 500 characters).');
         return false;
     }
-    if (externalLink && !/^(https?:\/\/)?[\w-]+(\.[\w-]+)+[/#?]?.*$/.test(externalLink)) {
+    if (externalLink && !/^(https?:\/\/)?[\w\-]+(\.[\w\-]+)+[/#?]?.*$/.test(externalLink)) {
         alert('Invalid external link format.');
         return false;
     }
