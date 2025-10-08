@@ -1,0 +1,10 @@
+Installatiehandleiding GamePlan Scheduler :
+
+1)Installeer XAMPP (PHP 8.1+, MySQL 8.0+).
+2)Database aanmaken: Open phpMyAdmin, voer database.sql uit (creëert gameplan_db).
+3)Projectkopiëren: Plaats bestanden in htdocs/gameplan/.
+4)Start server: Activeer Apache/MySQL in XAMPP.
+5)Toegang: Ga naar localhost/gameplan/index.php. Registreer/login om te starten.
+
+
+GitHub Repo Link : https://github.com/Harsha2006217/GamePlan-Scheduler
