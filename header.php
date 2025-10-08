@@ -2,7 +2,7 @@
 // header.php - Common Header
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Fixed header with logo, navigation menu.
+// Description: Fixed header with logo, navigation menu, and user profile icon.
 
 ?>
 <header class="fixed-top bg-primary p-3">

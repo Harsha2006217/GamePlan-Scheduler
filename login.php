@@ -13,20 +13,14 @@ if (isLoggedIn()) {
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'Invalid CSRF token.';
-    } else {
-        $email = $_POST['email'] ?? '';
-        $password = $_POST['password'] ?? '';
-        $error = loginUser($email, $password);
-        if (!$error) {
-            header("Location: index.php");
-            exit;
-        }
+    $email = $_POST['email'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $error = loginUser($email, $password);
+    if (!$error) {
+        header("Location: index.php");
+        exit;
     }
 }
-
-$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -43,7 +37,6 @@ $csrfToken = generateCSRFToken();
         <h1 class="text-center">Login</h1>
         <?php if ($error): ?><div class="alert alert-danger"><?php echo safeEcho($error); ?></div><?php endif; ?>
         <form method="POST" class="mt-4" onsubmit="return validateLoginForm();">
-            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>
                 <input type="email" id="email" name="email" class="form-control" required aria-label="Email address">

@@ -93,8 +93,8 @@ function validateEventForm() {
         alert('Description too long (max 500 characters).');
         return false;
     }
-    if (externalLink && !/^(http|https):\/\/[^ "]+$/.test(externalLink)) {
-        alert('Invalid URL format.');
+    if (externalLink && !/^(https?:\/\/)?[\w\-]+(\.[\w\-]+)+[/#?]?.*$/.test(externalLink)) {
+        alert('Invalid external link format.');
         return false;
     }
     return true;
@@ -102,7 +102,5 @@ function validateEventForm() {
 
 // Reminder pop-ups (simulated)
 document.addEventListener('DOMContentLoaded', function() {
-    // Fetch events and check reminders
-    // For demo, alert if reminder due
     console.log('Checking for reminders...');
 });

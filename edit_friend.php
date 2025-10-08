@@ -30,20 +30,14 @@ if (!$friend) {
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'Invalid CSRF token.';
-    } else {
-        $note = $_POST['note'] ?? '';
-        $error = updateFriendNote($userId, $id, $note);
-        if (!$error) {
-            setMessage('success', 'Friend note updated!');
-            header("Location: index.php");
-            exit;
-        }
+    $note = $_POST['note'] ?? '';
+    $error = updateFriendNote($userId, $id, $note);
+    if (!$error) {
+        setMessage('success', 'Friend note updated!');
+        header("Location: index.php");
+        exit;
     }
 }
-
-$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -64,7 +58,6 @@ $csrfToken = generateCSRFToken();
 
         <h2>Edit Note for <?php echo safeEcho($friend['username']); ?></h2>
         <form method="POST">
-            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="note" class="form-label">Note</label>
                 <textarea id="note" name="note" class="form-control" rows="2" aria-label="Note"><?php echo safeEcho($friend['note']); ?></textarea>

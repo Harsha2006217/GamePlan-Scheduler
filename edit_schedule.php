@@ -28,25 +28,24 @@ if (!$schedule) {
     exit;
 }
 
+$friends = getFriends($userId);
+$selectedFriends = explode(',', $schedule['friends']);
+$selectedSharedWith = explode(',', $schedule['shared_with']);
+
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'Invalid CSRF token.';
-    } else {
-        $gameTitle = $_POST['game_title'] ?? '';
-        $date = $_POST['date'] ?? '';
-        $time = $_POST['time'] ?? '';
-        $sharedWith = explode(',', $_POST['shared_with'] ?? '');
-        $error = editSchedule($userId, $id, $gameTitle, $date, $time, $sharedWith);
-        if (!$error) {
-            setMessage('success', 'Schedule updated successfully!');
-            header("Location: index.php");
-            exit;
-        }
+    $gameTitle = $_POST['game_title'] ?? '';
+    $date = $_POST['date'] ?? '';
+    $time = $_POST['time'] ?? '';
+    $selectedFriendsPost = $_POST['friends'] ?? [];
+    $selectedSharedWithPost = $_POST['shared_with'] ?? [];
+    $error = editSchedule($userId, $id, $gameTitle, $date, $time, $selectedFriendsPost, $selectedSharedWithPost);
+    if (!$error) {
+        setMessage('success', 'Schedule updated successfully!');
+        header("Location: index.php");
+        exit;
     }
 }
-
-$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -67,7 +66,6 @@ $csrfToken = generateCSRFToken();
 
         <h2>Edit Schedule</h2>
         <form method="POST" onsubmit="return validateScheduleForm();">
-            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="game_title" class="form-label">Game Title</label>
                 <input type="text" id="game_title" name="game_title" class="form-control" required maxlength="100" value="<?php echo safeEcho($schedule['game_titel']); ?>" aria-label="Game Title">
@@ -81,8 +79,22 @@ $csrfToken = generateCSRFToken();
                 <input type="time" id="time" name="time" class="form-control" required value="<?php echo safeEcho($schedule['time']); ?>" aria-label="Time">
             </div>
             <div class="mb-3">
-                <label for="shared_with" class="form-label">Shared With (comma-separated usernames)</label>
-                <input type="text" id="shared_with" name="shared_with" class="form-control" value="<?php echo safeEcho($schedule['friends']); ?>" aria-label="Shared With">
+                <label class="form-label">Friends</label>
+                <?php foreach ($friends as $friend): ?>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="friends[]" value="<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $selectedFriends)) echo 'checked'; ?>>
+                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Shared With</label>
+                <?php foreach ($friends as $friend): ?>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="shared_with[]" value="<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $selectedSharedWith)) echo 'checked'; ?>>
+                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
+                    </div>
+                <?php endforeach; ?>
             </div>
             <button type="submit" class="btn btn-primary">Update Schedule</button>
         </form>

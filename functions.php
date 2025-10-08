@@ -15,19 +15,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_regenerate_id(true); // Regenerate session ID for security
 }
 
-// Generate CSRF token
-function generateCSRFToken() {
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
-    return $_SESSION['csrf_token'];
-}
-
-// Validate CSRF token
-function validateCSRFToken($token) {
-    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
-}
-
 // --- Helper Functions ---
 
 // Secure output escaping
@@ -75,7 +62,7 @@ function validateEmail($email) {
 }
 
 // Validate URL
-function validateURL($url) {
+function validateUrl($url) {
     if (!empty($url) && !filter_var($url, FILTER_VALIDATE_URL)) {
         return "Invalid URL format.";
     }
@@ -218,7 +205,7 @@ function addFavoriteGame($userId, $title, $description = '', $note = '') {
     $stmt->execute(['user_id' => $userId, 'game_id' => $gameId]);
     if ($stmt->fetchColumn() > 0) return "Game already in favorites.";
 
-    // Insert
+    // Insert with note
     $stmt = $pdo->prepare("INSERT INTO UserGames (user_id, game_id, note) VALUES (:user_id, :game_id, :note)");
     $stmt->execute(['user_id' => $userId, 'game_id' => $gameId, 'note' => $note]);
     return null;
@@ -239,7 +226,7 @@ function updateFavoriteGame($userId, $gameId, $title, $description, $note) {
     $stmt = $pdo->prepare("UPDATE Games SET titel = :titel, description = :description WHERE game_id = :game_id AND deleted_at IS NULL");
     $stmt->execute(['titel' => $title, 'description' => $description, 'game_id' => $gameId]);
 
-    // Update note in UserGames
+    // Update UserGames note
     $stmt = $pdo->prepare("UPDATE UserGames SET note = :note WHERE user_id = :user_id AND game_id = :game_id");
     $stmt->execute(['note' => $note, 'user_id' => $userId, 'game_id' => $gameId]);
     return null;
@@ -284,7 +271,7 @@ function addFriend($userId, $friendUsername, $note = '') {
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId]);
     if ($stmt->fetchColumn() > 0) return "Already friends.";
 
-    // Insert mutual
+    // Insert mutual with note (note only on one side)
     $stmt = $pdo->prepare("INSERT INTO Friends (user_id, friend_user_id, note) VALUES (:user_id, :friend_id, :note), (:friend_id, :user_id, '')");
     $stmt->execute(['user_id' => $userId, 'friend_id' => $friendId, 'note' => $note]);
     return null;
@@ -304,7 +291,7 @@ function updateFriendNote($userId, $friendId, $note) {
     return null;
 }
 
-// Soft delete friend
+// Delete friend
 function deleteFriend($userId, $friendId) {
     $pdo = getDBConnection();
     
@@ -326,7 +313,7 @@ function getFriends($userId) {
 // --- Schedules Management ---
 
 // Add schedule
-function addSchedule($userId, $gameTitle, $date, $time, $friends = []) {
+function addSchedule($userId, $gameTitle, $date, $time, $friends = [], $sharedWith = []) {
     $pdo = getDBConnection();
     
     // Validate
@@ -336,12 +323,13 @@ function addSchedule($userId, $gameTitle, $date, $time, $friends = []) {
 
     $gameId = getOrCreateGameId($pdo, $gameTitle);
 
-    // Prepare friends as comma-separated string
+    // Prepare friends and shared_with as comma-separated strings
     $friendsStr = implode(',', $friends);
+    $sharedWithStr = implode(',', $sharedWith);
 
     // Insert
-    $stmt = $pdo->prepare("INSERT INTO Schedules (user_id, game_id, date, time, friends) VALUES (:user_id, :game_id, :date, :time, :friends)");
-    $stmt->execute(['user_id' => $userId, 'game_id' => $gameId, 'date' => $date, 'time' => $time, 'friends' => $friendsStr]);
+    $stmt = $pdo->prepare("INSERT INTO Schedules (user_id, game_id, date, time, friends, shared_with) VALUES (:user_id, :game_id, :date, :time, :friends, :shared_with)");
+    $stmt->execute(['user_id' => $userId, 'game_id' => $gameId, 'date' => $date, 'time' => $time, 'friends' => $friendsStr, 'shared_with' => $sharedWithStr]);
     return null;
 }
 
@@ -349,14 +337,14 @@ function addSchedule($userId, $gameTitle, $date, $time, $friends = []) {
 function getSchedules($userId, $sort = 'date ASC') {
     $pdo = getDBConnection();
     $sort = in_array($sort, ['date ASC', 'date DESC', 'time ASC', 'time DESC']) ? $sort : 'date ASC';
-    $stmt = $pdo->prepare("SELECT s.schedule_id, g.titel AS game_titel, s.date, s.time, s.friends 
+    $stmt = $pdo->prepare("SELECT s.schedule_id, g.titel AS game_titel, s.date, s.time, s.friends, s.shared_with 
                            FROM Schedules s JOIN Games g ON s.game_id = g.game_id WHERE s.user_id = :user_id AND s.deleted_at IS NULL ORDER BY $sort LIMIT 50");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
 
 // Edit schedule
-function editSchedule($userId, $scheduleId, $gameTitle, $date, $time, $friends = []) {
+function editSchedule($userId, $scheduleId, $gameTitle, $date, $time, $friends = [], $sharedWith = []) {
     $pdo = getDBConnection();
     
     // Check ownership
@@ -370,10 +358,11 @@ function editSchedule($userId, $scheduleId, $gameTitle, $date, $time, $friends =
     $gameId = getOrCreateGameId($pdo, $gameTitle);
 
     $friendsStr = implode(',', $friends);
+    $sharedWithStr = implode(',', $sharedWith);
 
     // Update
-    $stmt = $pdo->prepare("UPDATE Schedules SET game_id = :game_id, date = :date, time = :time, friends = :friends WHERE schedule_id = :id AND user_id = :user_id AND deleted_at IS NULL");
-    $stmt->execute(['game_id' => $gameId, 'date' => $date, 'time' => $time, 'friends' => $friendsStr, 'id' => $scheduleId, 'user_id' => $userId]);
+    $stmt = $pdo->prepare("UPDATE Schedules SET game_id = :game_id, date = :date, time = :time, friends = :friends, shared_with = :shared_with WHERE schedule_id = :id AND user_id = :user_id AND deleted_at IS NULL");
+    $stmt->execute(['game_id' => $gameId, 'date' => $date, 'time' => $time, 'friends' => $friendsStr, 'shared_with' => $sharedWithStr, 'id' => $scheduleId, 'user_id' => $userId]);
     return null;
 }
 
@@ -400,21 +389,19 @@ function addEvent($userId, $title, $date, $time, $description, $reminder, $exter
     if ($err = validateTime($time)) return $err;
     if (!empty($description) && strlen($description) > 500) return "Description too long (max 500 characters).";
     if (!in_array($reminder, ['none', '1_hour', '1_day'])) return "Invalid reminder option.";
-    if ($err = validateURL($externalLink)) return $err;
+    if ($err = validateUrl($externalLink)) return $err;
+
+    // Prepare shared_with as comma-separated string
+    $sharedWithStr = implode(',', $sharedWith);
 
     // Insert event
-    $stmt = $pdo->prepare("INSERT INTO Events (user_id, title, date, time, description, reminder, external_link) 
-                           VALUES (:user_id, :title, :date, :time, :description, :reminder, :external_link)");
+    $stmt = $pdo->prepare("INSERT INTO Events (user_id, title, date, time, description, reminder, external_link, shared_with) 
+                           VALUES (:user_id, :title, :date, :time, :description, :reminder, :external_link, :shared_with)");
     $stmt->execute([
         'user_id' => $userId, 'title' => $title, 'date' => $date, 'time' => $time, 
-        'description' => $description, 'reminder' => $reminder, 'external_link' => $externalLink
+        'description' => $description, 'reminder' => $reminder, 'external_link' => $externalLink, 'shared_with' => $sharedWithStr
     ]);
     $eventId = $pdo->lastInsertId();
-
-    // Share with
-    $sharedStr = implode(',', $sharedWith);
-    $stmt = $pdo->prepare("UPDATE Events SET shared_with = :shared_with WHERE event_id = :event_id");
-    $stmt->execute(['shared_with' => $sharedStr, 'event_id' => $eventId]);
 
     return null;
 }
@@ -423,8 +410,8 @@ function addEvent($userId, $title, $date, $time, $description, $reminder, $exter
 function getEvents($userId, $sort = 'date ASC') {
     $pdo = getDBConnection();
     $sort = in_array($sort, ['date ASC', 'date DESC', 'time ASC', 'time DESC']) ? $sort : 'date ASC';
-    $stmt = $pdo->prepare("SELECT event_id, title, date, time, description, reminder, external_link, shared_with 
-                           FROM Events WHERE user_id = :user_id AND deleted_at IS NULL ORDER BY $sort LIMIT 50");
+    $stmt = $pdo->prepare("SELECT e.event_id, e.title, e.date, e.time, e.description, e.reminder, e.external_link, e.shared_with 
+                           FROM Events e WHERE e.user_id = :user_id AND e.deleted_at IS NULL ORDER BY $sort LIMIT 50");
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll();
 }
@@ -441,16 +428,18 @@ function editEvent($userId, $eventId, $title, $date, $time, $description, $remin
     if ($err = validateTime($time)) return $err;
     if (!empty($description) && strlen($description) > 500) return "Description too long (max 500 characters).";
     if (!in_array($reminder, ['none', '1_hour', '1_day'])) return "Invalid reminder option.";
-    if ($err = validateURL($externalLink)) return $err;
+    if ($err = validateUrl($externalLink)) return $err;
+
+    $sharedWithStr = implode(',', $sharedWith);
 
     // Update event
-    $sharedStr = implode(',', $sharedWith);
     $stmt = $pdo->prepare("UPDATE Events SET title = :title, date = :date, time = :time, description = :description, 
                            reminder = :reminder, external_link = :external_link, shared_with = :shared_with WHERE event_id = :id AND user_id = :user_id AND deleted_at IS NULL");
     $stmt->execute([
         'title' => $title, 'date' => $date, 'time' => $time, 'description' => $description, 
-        'reminder' => $reminder, 'external_link' => $externalLink, 'shared_with' => $sharedStr, 'id' => $eventId, 'user_id' => $userId
+        'reminder' => $reminder, 'external_link' => $externalLink, 'shared_with' => $sharedWithStr, 'id' => $eventId, 'user_id' => $userId
     ]);
+
     return null;
 }
 
@@ -497,14 +486,20 @@ function getCalendarItems($userId) {
     return $items;
 }
 
-// --- Notification Simulation (for #1002) ---
-function sendNotification($type, $message) {
-    // Simulate in-app, email, push
-    if ($type == 'email') {
-        // mail(...);
-    } elseif ($type == 'push') {
-        // JS Notification
+// --- Reminder Handling (JS simulated) ---
+function getReminders($userId) {
+    // For JS to handle pop-ups
+    $events = getEvents($userId);
+    $reminders = [];
+    foreach ($events as $event) {
+        if ($event['reminder'] != 'none') {
+            $eventTime = strtotime($event['date'] . ' ' . $event['time']);
+            $reminderTime = $eventTime - ($event['reminder'] == '1_hour' ? 3600 : 86400);
+            if ($reminderTime <= time() && $reminderTime > time() - 60) { // Within last minute for demo
+                $reminders[] = $event;
+            }
+        }
     }
-    // For now, log or alert
+    return $reminders;
 }
 ?>

@@ -48,9 +48,8 @@ footer {
     table {
         font-size: 0.9em;
     }
-    .navbar-collapse {
-        background-color: #0d6efd;
-        padding: 10px;
+    .nav {
+        flex-direction: column;
     }
 }
 

@@ -2,7 +2,7 @@
 // edit_favorite.php - Edit Favorite Game Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to edit game title, description, note.
+// Description: Form to edit game title, description, and note.
 
 require_once 'functions.php';
 
@@ -30,22 +30,16 @@ if (!$game) {
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'Invalid CSRF token.';
-    } else {
-        $title = $_POST['title'] ?? '';
-        $description = $_POST['description'] ?? '';
-        $note = $_POST['note'] ?? '';
-        $error = updateFavoriteGame($userId, $id, $title, $description, $note);
-        if (!$error) {
-            setMessage('success', 'Favorite game updated!');
-            header("Location: profile.php");
-            exit;
-        }
+    $title = $_POST['title'] ?? '';
+    $description = $_POST['description'] ?? '';
+    $note = $_POST['note'] ?? '';
+    $error = updateFavoriteGame($userId, $id, $title, $description, $note);
+    if (!$error) {
+        setMessage('success', 'Favorite game updated!');
+        header("Location: profile.php");
+        exit;
     }
 }
-
-$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -66,7 +60,6 @@ $csrfToken = generateCSRFToken();
 
         <h2>Edit Favorite Game</h2>
         <form method="POST">
-            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="title" class="form-label">Game Title</label>
                 <input type="text" id="title" name="title" class="form-control" required maxlength="100" value="<?php echo safeEcho($game['titel']); ?>" aria-label="Game Title">

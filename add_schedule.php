@@ -2,7 +2,7 @@
 // add_schedule.php - Add Schedule Page
 // Author: Harsha Kanaparthi
 // Date: 30-09-2025
-// Description: Form to add new schedules with game title input, date, time, shared with text input.
+// Description: Form to add new schedules with game title input, date, time, friends, shared with.
 
 require_once 'functions.php';
 
@@ -13,26 +13,22 @@ if (!isLoggedIn()) {
 }
 
 $userId = getUserId();
+$friends = getFriends($userId);
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'Invalid CSRF token.';
-    } else {
-        $gameTitle = $_POST['game_title'] ?? '';
-        $date = $_POST['date'] ?? '';
-        $time = $_POST['time'] ?? '';
-        $sharedWith = explode(',', $_POST['shared_with'] ?? '');
-        $error = addSchedule($userId, $gameTitle, $date, $time, $sharedWith);
-        if (!$error) {
-            setMessage('success', 'Schedule added successfully!');
-            header("Location: index.php");
-            exit;
-        }
+    $gameTitle = $_POST['game_title'] ?? '';
+    $date = $_POST['date'] ?? '';
+    $time = $_POST['time'] ?? '';
+    $selectedFriends = $_POST['friends'] ?? [];
+    $sharedWith = $_POST['shared_with'] ?? [];
+    $error = addSchedule($userId, $gameTitle, $date, $time, $selectedFriends, $sharedWith);
+    if (!$error) {
+        setMessage('success', 'Schedule added successfully!');
+        header("Location: index.php");
+        exit;
     }
 }
-
-$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -53,7 +49,6 @@ $csrfToken = generateCSRFToken();
 
         <h2>Add Schedule</h2>
         <form method="POST" onsubmit="return validateScheduleForm();">
-            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="game_title" class="form-label">Game Title</label>
                 <input type="text" id="game_title" name="game_title" class="form-control" required maxlength="100" aria-label="Game Title">
@@ -67,8 +62,22 @@ $csrfToken = generateCSRFToken();
                 <input type="time" id="time" name="time" class="form-control" required aria-label="Time">
             </div>
             <div class="mb-3">
-                <label for="shared_with" class="form-label">Shared With (comma-separated usernames)</label>
-                <input type="text" id="shared_with" name="shared_with" class="form-control" aria-label="Shared With">
+                <label class="form-label">Friends</label>
+                <?php foreach ($friends as $friend): ?>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="friends[]" value="<?php echo $friend['user_id']; ?>">
+                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Shared With</label>
+                <?php foreach ($friends as $friend): ?>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="shared_with[]" value="<?php echo $friend['user_id']; ?>">
+                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
+                    </div>
+                <?php endforeach; ?>
             </div>
             <button type="submit" class="btn btn-primary">Add Schedule</button>
         </form>

@@ -28,28 +28,25 @@ if (!$event) {
     exit;
 }
 
+$friends = getFriends($userId);
+$selectedSharedWith = explode(',', $event['shared_with'] ?? '');
+
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-        $error = 'Invalid CSRF token.';
-    } else {
-        $title = $_POST['title'] ?? '';
-        $date = $_POST['date'] ?? '';
-        $time = $_POST['time'] ?? '';
-        $description = $_POST['description'] ?? '';
-        $reminder = $_POST['reminder'] ?? 'none';
-        $externalLink = $_POST['external_link'] ?? '';
-        $sharedWith = explode(',', $_POST['shared_with'] ?? '');
-        $error = editEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedWith);
-        if (!$error) {
-            setMessage('success', 'Event updated successfully!');
-            header("Location: index.php");
-            exit;
-        }
+    $title = $_POST['title'] ?? '';
+    $date = $_POST['date'] ?? '';
+    $time = $_POST['time'] ?? '';
+    $description = $_POST['description'] ?? '';
+    $reminder = $_POST['reminder'] ?? 'none';
+    $externalLink = $_POST['external_link'] ?? '';
+    $sharedWith = $_POST['shared_with'] ?? [];
+    $error = editEvent($userId, $id, $title, $date, $time, $description, $reminder, $externalLink, $sharedWith);
+    if (!$error) {
+        setMessage('success', 'Event updated successfully!');
+        header("Location: index.php");
+        exit;
     }
 }
-
-$csrfToken = generateCSRFToken();
 
 ?>
 <!DOCTYPE html>
@@ -70,7 +67,6 @@ $csrfToken = generateCSRFToken();
 
         <h2>Edit Event</h2>
         <form method="POST" onsubmit="return validateEventForm();">
-            <input type="hidden" name="csrf_token" value="<?php echo safeEcho($csrfToken); ?>">
             <div class="mb-3">
                 <label for="title" class="form-label">Title</label>
                 <input type="text" id="title" name="title" class="form-control" required maxlength="100" value="<?php echo safeEcho($event['title']); ?>" aria-label="Title">
@@ -100,8 +96,13 @@ $csrfToken = generateCSRFToken();
                 <input type="url" id="external_link" name="external_link" class="form-control" value="<?php echo safeEcho($event['external_link']); ?>" aria-label="External Link">
             </div>
             <div class="mb-3">
-                <label for="shared_with" class="form-label">Shared With (comma-separated usernames)</label>
-                <input type="text" id="shared_with" name="shared_with" class="form-control" value="<?php echo safeEcho($event['shared_with']); ?>" aria-label="Shared With">
+                <label class="form-label">Shared With</label>
+                <?php foreach ($friends as $friend): ?>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" name="shared_with[]" value="<?php echo $friend['user_id']; ?>" <?php if (in_array($friend['user_id'], $selectedSharedWith)) echo 'checked'; ?>>
+                        <label class="form-check-label"><?php echo safeEcho($friend['username']); ?></label>
+                    </div>
+                <?php endforeach; ?>
             </div>
             <button type="submit" class="btn btn-primary">Update Event</button>
         </form>
